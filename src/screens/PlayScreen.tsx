@@ -1,18 +1,50 @@
 import React, { useCallback, useState } from 'react';
-import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  Alert,
+  Pressable,
+  RefreshControl,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { Bot, Coins, Flame, Play, Swords, Timer, Trophy, WifiOff, Zap } from 'lucide-react-native';
+import {
+  Bot,
+  Coins,
+  Flame,
+  Play,
+  Swords,
+  Timer,
+  Trophy,
+  WifiOff,
+  Zap,
+} from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { useGame } from '../game/GameContext';
 import { api } from '../api/client';
 import { AppStackParams } from '../navigation/navigationRef';
-import { Avatar, Button, Card, GradientCard, IconBadge, Segmented, SectionTitle, styles as ui } from '../components/ui';
+import {
+  Avatar,
+  Button,
+  Card,
+  GradientCard,
+  IconBadge,
+  Segmented,
+  SectionTitle,
+  styles as ui,
+} from '../components/ui';
 import { colors, radius, spacing, type } from '../theme';
 
-const TIME_CONTROLS: { key: string; name: string; icon: LucideIcon; color: string }[] = [
+const TIME_CONTROLS: {
+  key: string;
+  name: string;
+  icon: LucideIcon;
+  color: string;
+}[] = [
   { key: '1+0', name: 'Bullet', icon: Zap, color: '#F59E0B' },
   { key: '3+0', name: 'Blitz', icon: Flame, color: '#F43F5E' },
   { key: '3+2', name: 'Blitz', icon: Flame, color: '#F43F5E' },
@@ -38,7 +70,10 @@ export default function PlayScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [wallet] = await Promise.all([api<{ balance: number }>('/player/wallet'), refreshUser()]);
+      const [wallet] = await Promise.all([
+        api<{ balance: number }>('/player/wallet'),
+        refreshUser(),
+      ]);
       setBalance(wallet.balance);
     } catch {
       // keeps the last known values
@@ -56,7 +91,10 @@ export default function PlayScreen() {
     try {
       await playComputer(level, color);
     } catch (err) {
-      Alert.alert('Could not start', err instanceof Error ? err.message : 'Try again');
+      Alert.alert(
+        'Could not start',
+        err instanceof Error ? err.message : 'Try again',
+      );
     } finally {
       setStarting(false);
     }
@@ -68,6 +106,7 @@ export default function PlayScreen() {
   return (
     <SafeAreaView style={ui.screen} edges={['top']}>
       <ScrollView
+        showsVerticalScrollIndicator={false}
         contentContainerStyle={ui.content}
         refreshControl={
           <RefreshControl
@@ -90,9 +129,17 @@ export default function PlayScreen() {
               {user?.displayName}
             </Text>
           </View>
-          <Pressable style={styles.coinPill} onPress={() => navigation.navigate('Tabs', { screen: 'Wallet' } as never)} accessibilityLabel="Coin balance">
+          <Pressable
+            style={styles.coinPill}
+            onPress={() =>
+              navigation.navigate('Tabs', { screen: 'Wallet' } as never)
+            }
+            accessibilityLabel="Coin balance"
+          >
             <Coins size={16} color={colors.gold} />
-            <Text style={styles.coinText}>{balance === null ? '—' : balance.toLocaleString('en-IN')}</Text>
+            <Text style={styles.coinText}>
+              {balance === null ? '—' : balance.toLocaleString('en-IN')}
+            </Text>
           </Pressable>
         </View>
 
@@ -104,9 +151,32 @@ export default function PlayScreen() {
               <Text style={type.overline}>Your rating</Text>
               <Text style={styles.rating}>{user?.rating ?? '—'}</Text>
             </View>
-            <View style={[styles.status, { backgroundColor: connected ? colors.primarySoft : colors.dangerSoft }]}>
-              <View style={[styles.dot, { backgroundColor: connected ? colors.primary : colors.danger }]} />
-              <Text style={[styles.statusText, { color: connected ? colors.primary : colors.danger }]}>{connected ? 'Online' : 'Offline'}</Text>
+            <View
+              style={[
+                styles.status,
+                {
+                  backgroundColor: connected
+                    ? colors.primarySoft
+                    : colors.dangerSoft,
+                },
+              ]}
+            >
+              <View
+                style={[
+                  styles.dot,
+                  {
+                    backgroundColor: connected ? colors.primary : colors.danger,
+                  },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusText,
+                  { color: connected ? colors.primary : colors.danger },
+                ]}
+              >
+                {connected ? 'Online' : 'Offline'}
+              </Text>
             </View>
           </View>
         </GradientCard>
@@ -114,7 +184,9 @@ export default function PlayScreen() {
         {!connected ? (
           <View style={styles.offline}>
             <WifiOff size={16} color={colors.warning} />
-            <Text style={styles.offlineText}>Connecting to the game server…</Text>
+            <Text style={styles.offlineText}>
+              Connecting to the game server…
+            </Text>
           </View>
         ) : null}
 
@@ -125,25 +197,38 @@ export default function PlayScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={type.h2}>Game in progress</Text>
                 <Text style={type.caption}>
-                  vs {activeGame.yourColor === 'w' ? activeGame.black.displayName : activeGame.white.displayName}
+                  vs{' '}
+                  {activeGame.yourColor === 'w'
+                    ? activeGame.black.displayName
+                    : activeGame.white.displayName}
                 </Text>
               </View>
             </View>
-            <Button title="Resume game" icon={Play} onPress={() => navigation.navigate('Game')} />
+            <Button
+              title="Resume game"
+              icon={Play}
+              onPress={() => navigation.navigate('Game')}
+            />
           </GradientCard>
         ) : null}
 
         {/* Quick play */}
         <SectionTitle title="Quick play" />
         <View style={styles.grid}>
-          {TIME_CONTROLS.map((tc) => {
+          {TIME_CONTROLS.map(tc => {
             const Icon = tc.icon;
             return (
               <Pressable
                 key={tc.key}
                 disabled={!canPlay}
-                onPress={() => navigation.navigate('Matchmaking', { timeControl: tc.key })}
-                style={({ pressed }) => [styles.tc, { opacity: !canPlay ? 0.4 : 1 }, pressed && styles.tcPressed]}
+                onPress={() =>
+                  navigation.navigate('Matchmaking', { timeControl: tc.key })
+                }
+                style={({ pressed }) => [
+                  styles.tc,
+                  { opacity: !canPlay ? 0.4 : 1 },
+                  pressed && styles.tcPressed,
+                ]}
                 accessibilityLabel={`${tc.name} ${tc.key}`}
               >
                 <Icon size={18} color={tc.color} strokeWidth={2.4} />
@@ -184,7 +269,14 @@ export default function PlayScreen() {
             value={color}
             onChange={setColor}
           />
-          <Button title="Start game" icon={Play} onPress={startComputer} loading={starting} disabled={!canPlay} style={{ marginTop: spacing.xs }} />
+          <Button
+            title="Start game"
+            icon={Play}
+            onPress={startComputer}
+            loading={starting}
+            disabled={!canPlay}
+            style={{ marginTop: spacing.xs }}
+          />
         </Card>
       </ScrollView>
     </SafeAreaView>
@@ -192,7 +284,12 @@ export default function PlayScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginBottom: spacing.xs,
+  },
   coinPill: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -204,11 +301,28 @@ const styles = StyleSheet.create({
   },
   coinText: { color: colors.gold, fontWeight: '800', fontSize: 15 },
   hero: { paddingVertical: spacing.xl },
-  rating: { color: colors.text, fontSize: 34, fontWeight: '800', letterSpacing: -0.5 },
-  status: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill },
+  rating: {
+    color: colors.text,
+    fontSize: 34,
+    fontWeight: '800',
+    letterSpacing: -0.5,
+  },
+  status: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: radius.pill,
+  },
   dot: { width: 7, height: 7, borderRadius: 4 },
   statusText: { fontSize: 12, fontWeight: '700' },
-  offline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center' },
+  offline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.sm,
+    justifyContent: 'center',
+  },
   offlineText: { color: colors.warning, fontWeight: '600' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tc: {
@@ -221,7 +335,10 @@ const styles = StyleSheet.create({
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border,
   },
-  tcPressed: { backgroundColor: colors.surfaceAlt, transform: [{ scale: 0.97 }] },
+  tcPressed: {
+    backgroundColor: colors.surfaceAlt,
+    transform: [{ scale: 0.97 }],
+  },
   tcKey: { color: colors.text, fontSize: 22, fontWeight: '800' },
   computer: { gap: spacing.md },
 });

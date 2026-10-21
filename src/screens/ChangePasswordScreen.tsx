@@ -4,7 +4,13 @@ import type { TextInputInstance } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { api, errorMessage, SessionPayload, storeSession } from '../api/client';
 import { AppStackParams } from '../navigation/navigationRef';
-import { Button, ErrorText, Field, Muted, styles as ui } from '../components/ui';
+import {
+  Button,
+  ErrorText,
+  Field,
+  Muted,
+  styles as ui,
+} from '../components/ui';
 
 type Props = NativeStackScreenProps<AppStackParams, 'ChangePassword'>;
 
@@ -41,7 +47,12 @@ export default function ChangePasswordScreen({ navigation }: Props) {
   }
 
   return (
-    <ScrollView style={ui.screen} contentContainerStyle={ui.content} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      style={ui.screen}
+      contentContainerStyle={ui.content}
+      keyboardShouldPersistTaps="handled"
+    >
       <ErrorText message={error} />
       <Field
         label="Current password"
@@ -78,7 +89,12 @@ export default function ChangePasswordScreen({ navigation }: Props) {
         onSubmitEditing={() => current && next && confirm && !saving && save()}
       />
       <Muted>At least 8 characters, with a letter and a number.</Muted>
-      <Button title="Change password" onPress={save} loading={saving} disabled={!current || !next || !confirm} />
+      <Button
+        title="Change password"
+        onPress={save}
+        loading={saving}
+        disabled={!current || !next || !confirm}
+      />
     </ScrollView>
   );
 }

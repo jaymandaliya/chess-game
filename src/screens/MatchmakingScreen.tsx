@@ -18,17 +18,27 @@ export default function MatchmakingScreen({ route, navigation }: Props) {
   const pulse = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    const loop = Animated.loop(Animated.timing(pulse, { toValue: 1, duration: 1600, easing: Easing.out(Easing.ease), useNativeDriver: true }));
+    const loop = Animated.loop(
+      Animated.timing(pulse, {
+        toValue: 1,
+        duration: 1600,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }),
+    );
     loop.start();
     return () => loop.stop();
   }, [pulse]);
 
   useEffect(() => {
-    joinQueue(timeControl).catch((err) => {
-      Alert.alert('Could not join', err instanceof Error ? err.message : 'Try again');
+    joinQueue(timeControl).catch(err => {
+      Alert.alert(
+        'Could not join',
+        err instanceof Error ? err.message : 'Try again',
+      );
       navigation.goBack();
     });
-    const timer = setInterval(() => setSeconds((s) => s + 1), 1000);
+    const timer = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => {
       clearInterval(timer);
       // No-op on the server if we were already paired
@@ -37,7 +47,14 @@ export default function MatchmakingScreen({ route, navigation }: Props) {
   }, [timeControl, joinQueue, navigation]);
 
   const ring = {
-    transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1.6] }) }],
+    transform: [
+      {
+        scale: pulse.interpolate({
+          inputRange: [0, 1],
+          outputRange: [0.6, 1.6],
+        }),
+      },
+    ],
     opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0] }),
   };
 
@@ -52,22 +69,59 @@ export default function MatchmakingScreen({ route, navigation }: Props) {
       <Text style={type.h1}>Finding an opponent</Text>
       <View style={styles.pill}>
         <Text style={styles.pillText}>
-          {timeControl} · Rated · {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
+          {timeControl} · Rated · {Math.floor(seconds / 60)}:
+          {String(seconds % 60).padStart(2, '0')}
         </Text>
       </View>
-      <Text style={[type.caption, styles.hint]}>We pair you with a player of similar rating. The range widens the longer you wait.</Text>
-      <Button title="Cancel" icon={X} variant="secondary" onPress={() => navigation.goBack()} style={styles.cancel} />
+      <Text style={[type.caption, styles.hint]}>
+        We pair you with a player of similar rating. The range widens the longer
+        you wait.
+      </Text>
+      <Button
+        title="Cancel"
+        icon={X}
+        variant="secondary"
+        onPress={() => navigation.goBack()}
+        style={styles.cancel}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { padding: spacing.xl, gap: spacing.lg },
-  radar: { width: 180, height: 180, alignItems: 'center', justifyContent: 'center' },
-  ring: { position: 'absolute', width: 140, height: 140, borderRadius: 70, backgroundColor: colors.primary },
-  core: { width: 96, height: 96, borderRadius: 48, backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center' },
-  pill: { backgroundColor: colors.surfaceAlt, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 999 },
-  pillText: { color: colors.text, fontWeight: '700', fontVariant: ['tabular-nums'] },
+  radar: {
+    width: 180,
+    height: 180,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ring: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    backgroundColor: colors.primary,
+  },
+  core: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pill: {
+    backgroundColor: colors.surfaceAlt,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 999,
+  },
+  pillText: {
+    color: colors.text,
+    fontWeight: '700',
+    fontVariant: ['tabular-nums'],
+  },
   hint: { textAlign: 'center', maxWidth: 300 },
   cancel: { alignSelf: 'stretch', marginTop: spacing.md },
 });

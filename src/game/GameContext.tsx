@@ -1,4 +1,12 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { io, Socket } from 'socket.io-client';
 import { API_URL } from '../config';
 import { refreshSession } from '../api/client';
@@ -24,13 +32,20 @@ export interface GameEnd {
   result: 'WHITE_WIN' | 'BLACK_WIN' | 'DRAW' | 'ABORTED';
   termination: string | null;
   winner: Color | null;
-  ratings: { white: { before: number; after: number }; black: { before: number; after: number } } | null;
+  ratings: {
+    white: { before: number; after: number };
+    black: { before: number; after: number };
+  } | null;
 }
 
 export interface GameState {
   gameId: string;
   mode: 'RATED' | 'CASUAL' | 'VS_COMPUTER';
-  timeControl: { initialSeconds: number; incrementSeconds: number; label: string };
+  timeControl: {
+    initialSeconds: number;
+    incrementSeconds: number;
+    label: string;
+  };
   white: Side;
   black: Side;
   yourColor: Color;
@@ -67,7 +82,10 @@ interface GameApi {
   searching: string | null;
   joinQueue(timeControl: string): Promise<void>;
   leaveQueue(): Promise<void>;
-  playComputer(level: number, color: 'white' | 'black' | 'random'): Promise<void>;
+  playComputer(
+    level: number,
+    color: 'white' | 'black' | 'random',
+  ): Promise<void>;
   move(from: string, to: string, promotion?: string): Promise<void>;
   resign(): Promise<void>;
   abort(): Promise<void>;
@@ -93,7 +111,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     const socket = io(API_URL, {
       transports: ['websocket'],
       // Function form: every (re)connect uses the newest access token
-      auth: (cb) => cb({ token: getAccessToken() }),
+      auth: cb => cb({ token: getAccessToken() }),
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
     });
@@ -101,64 +119,96 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
-    socket.on('connect_error', async (err: Error & { data?: { code?: string } }) => {
-      if (err.data?.code === 'TOKEN_EXPIRED' || err.data?.code === 'UNAUTHORIZED') {
-        if (await refreshSession()) socket.connect();
-      }
-    });
+    socket.on(
+      'connect_error',
+      async (err: Error & { data?: { code?: string } }) => {
+        if (
+          err.data?.code === 'TOKEN_EXPIRED' ||
+          err.data?.code === 'UNAUTHORIZED'
+        ) {
+          if (await refreshSession()) socket.connect();
+        }
+      },
+    );
 
-    const fullState = (state: Omit<GameState, 'clocksAt' | 'opponentDisconnected' | 'end'>) => {
+    const fullState = (
+      state: Omit<GameState, 'clocksAt' | 'opponentDisconnected' | 'end'>,
+    ) => {
       setSearching(null);
-      setGame({ ...state, clocksAt: Date.now(), opponentDisconnected: false, end: null });
+      setGame({
+        ...state,
+        clocksAt: Date.now(),
+        opponentDisconnected: false,
+        end: null,
+      });
     };
     // A new game opens the board; a reconnect only restores state (Play shows "Resume game")
-    socket.on('game:start', (state) => {
+    socket.on('game:start', state => {
       fullState(state);
       goToGame();
     });
     socket.on('game:state', fullState);
 
-    socket.on('queue:joined', ({ timeControl }: { timeControl: string }) => setSearching(timeControl));
+    socket.on('queue:joined', ({ timeControl }: { timeControl: string }) =>
+      setSearching(timeControl),
+    );
 
-    socket.on('game:move', (msg: {
-      gameId: string;
-      move: { from: string; to: string; san: string };
-      fen: string;
-      turn: Color;
-      clocks: Clocks | null;
-      clocksRunning: boolean;
-    }) => {
-      setGame((g) =>
+    socket.on(
+      'game:move',
+      (msg: {
+        gameId: string;
+        move: { from: string; to: string; san: string };
+        fen: string;
+        turn: Color;
+        clocks: Clocks | null;
+        clocksRunning: boolean;
+      }) => {
+        setGame(g =>
+          g && g.gameId === msg.gameId
+            ? {
+                ...g,
+                fen: msg.fen,
+                turn: msg.turn,
+                moves: [...g.moves, msg.move.san],
+                lastMove: { from: msg.move.from, to: msg.move.to },
+                clocks: msg.clocks,
+                clocksRunning: msg.clocksRunning,
+                clocksAt: Date.now(),
+                drawOfferBy: null,
+              }
+            : g,
+        );
+      },
+    );
+
+    socket.on('game:end', (msg: GameEnd & { gameId: string }) => {
+      setGame(g =>
         g && g.gameId === msg.gameId
-          ? {
-              ...g,
-              fen: msg.fen,
-              turn: msg.turn,
-              moves: [...g.moves, msg.move.san],
-              lastMove: { from: msg.move.from, to: msg.move.to },
-              clocks: msg.clocks,
-              clocksRunning: msg.clocksRunning,
-              clocksAt: Date.now(),
-              drawOfferBy: null,
-            }
+          ? { ...g, status: 'ENDED', clocksRunning: false, end: msg }
           : g,
       );
     });
-
-    socket.on('game:end', (msg: GameEnd & { gameId: string }) => {
-      setGame((g) => (g && g.gameId === msg.gameId ? { ...g, status: 'ENDED', clocksRunning: false, end: msg } : g));
-    });
-    socket.on('game:drawOffer', ({ gameId, by }: { gameId: string; by: Color }) =>
-      setGame((g) => (g && g.gameId === gameId ? { ...g, drawOfferBy: by } : g)),
+    socket.on(
+      'game:drawOffer',
+      ({ gameId, by }: { gameId: string; by: Color }) =>
+        setGame(g =>
+          g && g.gameId === gameId ? { ...g, drawOfferBy: by } : g,
+        ),
     );
     socket.on('game:drawDeclined', ({ gameId }: { gameId: string }) =>
-      setGame((g) => (g && g.gameId === gameId ? { ...g, drawOfferBy: null } : g)),
+      setGame(g =>
+        g && g.gameId === gameId ? { ...g, drawOfferBy: null } : g,
+      ),
     );
     socket.on('game:opponentDisconnected', ({ gameId }: { gameId: string }) =>
-      setGame((g) => (g && g.gameId === gameId ? { ...g, opponentDisconnected: true } : g)),
+      setGame(g =>
+        g && g.gameId === gameId ? { ...g, opponentDisconnected: true } : g,
+      ),
     );
     socket.on('game:opponentReconnected', ({ gameId }: { gameId: string }) =>
-      setGame((g) => (g && g.gameId === gameId ? { ...g, opponentDisconnected: false } : g)),
+      setGame(g =>
+        g && g.gameId === gameId ? { ...g, opponentDisconnected: false } : g,
+      ),
     );
 
     return () => {
@@ -175,14 +225,27 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     return new Promise<T | undefined>((resolve, reject) => {
       const socket = socketRef.current;
       if (!socket || !socket.connected) {
-        reject(new GameActionError('OFFLINE', 'Not connected to the game server'));
+        reject(
+          new GameActionError('OFFLINE', 'Not connected to the game server'),
+        );
         return;
       }
-      socket.timeout(10000).emit(event, payload ?? {}, (err: Error | null, ack: Ack<T>) => {
-        if (err) reject(new GameActionError('TIMEOUT', 'The server did not respond'));
-        else if (!ack.ok) reject(new GameActionError(ack.code ?? 'ERROR', ack.message ?? 'Action failed'));
-        else resolve(ack.data);
-      });
+      socket
+        .timeout(10000)
+        .emit(event, payload ?? {}, (err: Error | null, ack: Ack<T>) => {
+          if (err)
+            reject(
+              new GameActionError('TIMEOUT', 'The server did not respond'),
+            );
+          else if (!ack.ok)
+            reject(
+              new GameActionError(
+                ack.code ?? 'ERROR',
+                ack.message ?? 'Action failed',
+              ),
+            );
+          else resolve(ack.data);
+        });
     });
   }, []);
 
@@ -204,7 +267,12 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         await emit('game:computer', { level, color });
       },
       async move(from: string, to: string, promotion?: string) {
-        await emit('game:move', { gameId: gameIdRef.current, from, to, promotion });
+        await emit('game:move', {
+          gameId: gameIdRef.current,
+          from,
+          to,
+          promotion,
+        });
       },
       async resign() {
         await emit('game:resign', { gameId: gameIdRef.current });
@@ -219,13 +287,16 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
         await emit('game:respondDraw', { gameId: gameIdRef.current, accept });
       },
       clearGame() {
-        setGame((g) => (g && g.status === 'ENDED' ? null : g));
+        setGame(g => (g && g.status === 'ENDED' ? null : g));
       },
     }),
     [emit],
   );
 
-  const value = useMemo<GameApi>(() => ({ connected, game, searching, ...actions }), [connected, game, searching, actions]);
+  const value = useMemo<GameApi>(
+    () => ({ connected, game, searching, ...actions }),
+    [connected, game, searching, actions],
+  );
 
   return <GameContext.Provider value={value}>{children}</GameContext.Provider>;
 }

@@ -8,7 +8,12 @@ import { useAuth } from '../auth/AuthContext';
 import { GameProvider } from '../game/GameContext';
 import { Loading } from '../components/ui';
 import { colors } from '../theme';
-import { AppStackParams, AuthStackParams, navigationRef, TabParams } from './navigationRef';
+import {
+  AppStackParams,
+  AuthStackParams,
+  navigationRef,
+  TabParams,
+} from './navigationRef';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -28,7 +33,14 @@ const Tabs = createBottomTabNavigator<TabParams>();
 
 const theme = {
   ...DarkTheme,
-  colors: { ...DarkTheme.colors, background: colors.bg, card: colors.bg, primary: colors.primary, text: colors.text, border: colors.border },
+  colors: {
+    ...DarkTheme.colors,
+    background: colors.bg,
+    card: colors.bg,
+    primary: colors.primary,
+    text: colors.text,
+    border: colors.border,
+  },
 };
 
 const headerOptions = {
@@ -38,7 +50,12 @@ const headerOptions = {
   headerTitleStyle: { fontWeight: '700' as const },
 };
 
-const TAB_ICONS: Record<keyof TabParams, LucideIcon> = { Play: Swords, History, Wallet, Profile: UserRound };
+const TAB_ICONS: Record<keyof TabParams, LucideIcon> = {
+  Play: Swords,
+  History,
+  Wallet,
+  Profile: UserRound,
+};
 
 const renderTabIcon =
   (name: keyof TabParams) =>
@@ -57,14 +74,25 @@ function MainTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
+        tabBarStyle: {
+          backgroundColor: colors.surface,
+          borderTopColor: colors.border,
+        },
         tabBarIcon: renderTabIcon(route.name),
       })}
     >
-      <Tabs.Screen name="Play" component={PlayScreen} options={{ headerShown: false }} />
+      <Tabs.Screen
+        name="Play"
+        component={PlayScreen}
+        options={{ headerShown: false }}
+      />
       <Tabs.Screen name="History" component={HistoryScreen} />
       <Tabs.Screen name="Wallet" component={WalletScreen} />
-      <Tabs.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
+      <Tabs.Screen
+        name="Profile"
+        component={ProfileScreen}
+        options={{ headerShown: false }}
+      />
     </Tabs.Navigator>
   );
 }
@@ -73,12 +101,36 @@ function AppNavigator() {
   return (
     <GameProvider>
       <AppStack.Navigator screenOptions={headerOptions}>
-        <AppStack.Screen name="Tabs" component={MainTabs} options={{ headerShown: false }} />
-        <AppStack.Screen name="Matchmaking" component={MatchmakingScreen} options={{ title: 'Quick pairing', presentation: 'modal' }} />
-        <AppStack.Screen name="Game" component={GameScreen} options={{ title: '' }} />
-        <AppStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Board & gameplay' }} />
-        <AppStack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit profile' }} />
-        <AppStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change password' }} />
+        <AppStack.Screen
+          name="Tabs"
+          component={MainTabs}
+          options={{ headerShown: false }}
+        />
+        <AppStack.Screen
+          name="Matchmaking"
+          component={MatchmakingScreen}
+          options={{ title: 'Quick pairing', presentation: 'modal' }}
+        />
+        <AppStack.Screen
+          name="Game"
+          component={GameScreen}
+          options={{ title: '' }}
+        />
+        <AppStack.Screen
+          name="Settings"
+          component={SettingsScreen}
+          options={{ title: 'Board & gameplay' }}
+        />
+        <AppStack.Screen
+          name="EditProfile"
+          component={EditProfileScreen}
+          options={{ title: 'Edit profile' }}
+        />
+        <AppStack.Screen
+          name="ChangePassword"
+          component={ChangePasswordScreen}
+          options={{ title: 'Change password' }}
+        />
       </AppStack.Navigator>
     </GameProvider>
   );
@@ -87,9 +139,16 @@ function AppNavigator() {
 function AuthNavigator() {
   return (
     <AuthStack.Navigator screenOptions={{ ...headerOptions, title: '' }}>
-      <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
+      <AuthStack.Screen
+        name="Login"
+        component={LoginScreen}
+        options={{ headerShown: false }}
+      />
       <AuthStack.Screen name="Register" component={RegisterScreen} />
-      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+      <AuthStack.Screen
+        name="ForgotPassword"
+        component={ForgotPasswordScreen}
+      />
     </AuthStack.Navigator>
   );
 }

@@ -2,7 +2,14 @@ import React, { useState } from 'react';
 import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { KeyRound, Mail, MailCheck, Send } from 'lucide-react-native';
 import { api, errorMessage } from '../../api/client';
-import { Button, Card, ErrorText, Field, IconBadge, styles as ui } from '../../components/ui';
+import {
+  Button,
+  Card,
+  ErrorText,
+  Field,
+  IconBadge,
+  styles as ui,
+} from '../../components/ui';
 import { colors, spacing, type } from '../../theme';
 
 export default function ForgotPasswordScreen() {
@@ -17,7 +24,11 @@ export default function ForgotPasswordScreen() {
     setError(null);
     setLoading(true);
     try {
-      await api('/auth/forgot-password', { method: 'POST', auth: false, body: { email: email.trim() } });
+      await api('/auth/forgot-password', {
+        method: 'POST',
+        auth: false,
+        body: { email: email.trim() },
+      });
       setSent(true);
     } catch (err) {
       setError(errorMessage(err));
@@ -27,17 +38,26 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <ScrollView style={ui.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView
+      showsVerticalScrollIndicator={false}
+      style={ui.screen}
+      contentContainerStyle={styles.container}
+      keyboardShouldPersistTaps="handled"
+    >
       <View style={styles.header}>
         <IconBadge icon={KeyRound} color={colors.gold} size={52} />
         <Text style={type.h1}>Reset your password</Text>
-        <Text style={type.caption}>Enter your account email and we will send you a reset link.</Text>
+        <Text style={type.caption}>
+          Enter your account email and we will send you a reset link.
+        </Text>
       </View>
       {sent ? (
         <Card style={styles.sent}>
           <IconBadge icon={MailCheck} size={44} />
           <Text style={type.h2}>Check your inbox</Text>
-          <Text style={[type.caption, styles.centerText]}>If {email} is registered, a reset link is on its way.</Text>
+          <Text style={[type.caption, styles.centerText]}>
+            If {email} is registered, a reset link is on its way.
+          </Text>
         </Card>
       ) : (
         <>
@@ -55,7 +75,13 @@ export default function ForgotPasswordScreen() {
             returnKeyType="send"
             onSubmitEditing={submit}
           />
-          <Button title="Send reset link" icon={Send} onPress={submit} loading={loading} disabled={!email.trim()} />
+          <Button
+            title="Send reset link"
+            icon={Send}
+            onPress={submit}
+            loading={loading}
+            disabled={!email.trim()}
+          />
         </>
       )}
     </ScrollView>

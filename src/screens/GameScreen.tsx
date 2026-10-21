@@ -205,7 +205,11 @@ export default function GameScreen({ navigation }: Props) {
 
   return (
     <View style={ui.screen}>
-      <ScrollView style={ui.screen} contentContainerStyle={styles.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={ui.screen}
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.meta}>
           <Text style={type.overline}>
             {game.mode === 'VS_COMPUTER'

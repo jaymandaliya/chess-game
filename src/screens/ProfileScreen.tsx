@@ -18,7 +18,9 @@ export default function ProfileScreen() {
 
   useFocusEffect(
     useCallback(() => {
-      api<Profile>('/player/profile').then(setProfile).catch(() => {});
+      api<Profile>('/player/profile')
+        .then(setProfile)
+        .catch(() => {});
     }, []),
   );
 
@@ -26,7 +28,10 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView style={ui.screen} edges={['top']}>
-      <ScrollView contentContainerStyle={ui.content}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={ui.content}
+      >
         <View style={styles.header}>
           <Avatar name={name || '?'} size={88} />
           <Text style={type.h1}>{name}</Text>
@@ -46,11 +51,27 @@ export default function ProfileScreen() {
 
         <Text style={[type.overline, styles.groupLabel]}>Account</Text>
         <Card style={styles.menu}>
-          <ListRow icon={Pencil} title="Edit profile" subtitle="Name, country, bio" onPress={() => navigation.navigate('EditProfile')} />
+          <ListRow
+            icon={Pencil}
+            title="Edit profile"
+            subtitle="Name, country, bio"
+            onPress={() => navigation.navigate('EditProfile')}
+          />
           <View style={styles.divider} />
-          <ListRow icon={KeyRound} iconColor={colors.gold} title="Change password" onPress={() => navigation.navigate('ChangePassword')} />
+          <ListRow
+            icon={KeyRound}
+            iconColor={colors.gold}
+            title="Change password"
+            onPress={() => navigation.navigate('ChangePassword')}
+          />
           <View style={styles.divider} />
-          <ListRow icon={Palette} iconColor={colors.accent} title="Board & gameplay" subtitle="Theme, legal moves, auto-queen" onPress={() => navigation.navigate('Settings')} />
+          <ListRow
+            icon={Palette}
+            iconColor={colors.accent}
+            title="Board & gameplay"
+            subtitle="Theme, legal moves, auto-queen"
+            onPress={() => navigation.navigate('Settings')}
+          />
         </Card>
 
         <Card style={styles.menu}>
@@ -69,7 +90,11 @@ export default function ProfileScreen() {
 
         {profile ? (
           <Text style={[type.caption, styles.since]}>
-            Member since {new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+            Member since{' '}
+            {new Date(profile.createdAt).toLocaleDateString('en-IN', {
+              month: 'long',
+              year: 'numeric',
+            })}
           </Text>
         ) : null}
       </ScrollView>
@@ -79,10 +104,23 @@ export default function ProfileScreen() {
 
 const styles = StyleSheet.create({
   header: { alignItems: 'center', gap: 6, paddingVertical: spacing.lg },
-  bio: { color: colors.textSecondary, textAlign: 'center', marginTop: 4, maxWidth: 300 },
-  sep: { width: StyleSheet.hairlineWidth, alignSelf: 'stretch', backgroundColor: colors.border },
+  bio: {
+    color: colors.textSecondary,
+    textAlign: 'center',
+    marginTop: 4,
+    maxWidth: 300,
+  },
+  sep: {
+    width: StyleSheet.hairlineWidth,
+    alignSelf: 'stretch',
+    backgroundColor: colors.border,
+  },
   groupLabel: { marginTop: spacing.sm, marginLeft: spacing.xs },
   menu: { padding: 0, gap: 0, overflow: 'hidden' },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: colors.border, marginLeft: 68 },
+  divider: {
+    height: StyleSheet.hairlineWidth,
+    backgroundColor: colors.border,
+    marginLeft: 68,
+  },
   since: { textAlign: 'center', marginTop: spacing.sm },
 });

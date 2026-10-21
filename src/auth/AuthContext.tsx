@@ -1,5 +1,18 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { api, onSessionExpired, refreshSession, SessionPayload, storeSession } from '../api/client';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+import {
+  api,
+  onSessionExpired,
+  refreshSession,
+  SessionPayload,
+  storeSession,
+} from '../api/client';
 import { clearTokens, loadRefreshToken } from '../api/tokenStore';
 import { PlayerSettings, SessionUser } from '../api/types';
 
@@ -97,7 +110,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       },
       async logout() {
         const refreshToken = await loadRefreshToken();
-        api('/auth/logout', { method: 'POST', auth: false, body: { refreshToken } }).catch(() => {});
+        api('/auth/logout', {
+          method: 'POST',
+          auth: false,
+          body: { refreshToken },
+        }).catch(() => {});
         await clearTokens();
         setUser(null);
         setSettings(DEFAULT_SETTINGS);
@@ -107,14 +124,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(fresh);
       },
       async updateSettings(patch: Partial<PlayerSettings>) {
-        setSettings((s) => ({ ...s, ...patch }));
-        setSettings(await api<PlayerSettings>('/player/settings', { method: 'PATCH', body: patch }));
+        setSettings(s => ({ ...s, ...patch }));
+        setSettings(
+          await api<PlayerSettings>('/player/settings', {
+            method: 'PATCH',
+            body: patch,
+          }),
+        );
       },
     }),
     [startSession],
   );
 
-  const value = useMemo<AuthState>(() => ({ user, settings, booting, ...actions }), [user, settings, booting, actions]);
+  const value = useMemo<AuthState>(
+    () => ({ user, settings, booting, ...actions }),
+    [user, settings, booting, actions],
+  );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
