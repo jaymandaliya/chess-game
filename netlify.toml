@@ -5,7 +5,22 @@
 [build.environment]
   NODE_VERSION = "22"
 
-# Redirects (API proxy + SPA fallback) live in public/_redirects
+# API calls go through Netlify to the backend: same origin for the browser, so no CORS
+# issues and the httpOnly refresh cookie works. Backend currently runs on the developer Mac
+# behind ngrok; switch `to` to the Railway URL once it is deployed there.
+[[redirects]]
+  from = "/api/*"
+  to = "https://kenisha-immortalisable-nonreducibly.ngrok-free.dev/api/:splat"
+  status = 200
+  force = true
+  # ngrok's free plan shows a browser warning page unless this header is present
+  headers = { ngrok-skip-browser-warning = "1" }
+
+# Single-page app: every other path serves index.html
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
 
 [[headers]]
   for = "/*"

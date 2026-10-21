@@ -1,6 +1,0 @@
-# API calls go through Netlify to the Railway backend: same origin for the browser,
-# so no CORS issues and the httpOnly refresh cookie works.
-/api/*  https://chess-platform-api.up.railway.app/api/:splat  200!
-
-# Single-page app: every other path serves index.html
-/*      /index.html  200
