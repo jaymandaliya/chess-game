@@ -44,3 +44,25 @@ export function dayStartIso(day: string): string | undefined {
 export function dayEndIso(day: string): string | undefined {
   return day ? new Date(`${day}T23:59:59.999+05:30`).toISOString() : undefined;
 }
+
+// Every IST day (yyyy-mm-dd) or month (yyyy-mm) in the range, so charts show gaps as zero
+export function periodsBetween(fromDay: string, toDay: string, groupBy: 'day' | 'month' = 'day'): string[] {
+  const out: string[] = [];
+  const d = new Date(`${fromDay}T00:00:00Z`);
+  const end = new Date(`${toDay}T00:00:00Z`);
+  while (d <= end && out.length < 400) {
+    const key = groupBy === 'month' ? d.toISOString().slice(0, 7) : d.toISOString().slice(0, 10);
+    if (out[out.length - 1] !== key) out.push(key);
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+}
+
+export function istDay(date: Date): string {
+  return new Date(date.getTime() + 330 * 60000).toISOString().slice(0, 10);
+}
+
+export function fillSeries<T extends { period: string }>(series: T[], periods: string[], value: (p: T) => number) {
+  const byPeriod = new Map(series.map((p) => [p.period, value(p)]));
+  return periods.map((period) => ({ label: period, value: byPeriod.get(period) ?? 0 }));
+}

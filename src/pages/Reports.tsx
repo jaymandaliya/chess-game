@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { download, qs } from '../api';
 import { useApi } from '../hooks';
 import { BarChart, DateRange, ErrorBanner, StatCard } from '../components';
-import { dayEndIso, dayStartIso, humanize, num, rupees } from '../format';
+import { dayEndIso, dayStartIso, fillSeries, humanize, num, periodsBetween, rupees } from '../format';
 
 interface Overview {
   revenue: {
@@ -58,6 +58,8 @@ export default function Reports() {
   const range = { from: dayStartIso(from), to: dayEndIso(to) };
   const { data, error, loading } = useApi<Overview>(from && to ? `/admin/reports${qs({ type: 'overview', groupBy, ...range })}` : null);
 
+  const periods = from && to ? periodsBetween(from, to, groupBy) : [];
+
   async function exportCsv(type: string) {
     setExportError(null);
     try {
@@ -101,19 +103,19 @@ export default function Reports() {
           <div className="two-col">
             <section className="card">
               <h2>Revenue</h2>
-              <BarChart data={data.revenue.series.map((d) => ({ label: d.period, value: d.revenuePaise }))} format={rupees} />
+              <BarChart data={fillSeries(data.revenue.series, periods, (d) => d.revenuePaise)} format={rupees} />
               <Breakdown title="Orders created by status" data={data.revenue.ordersByStatus} />
             </section>
             <section className="card">
               <h2>New players</h2>
-              <BarChart data={data.players.series.map((d) => ({ label: d.period, value: d.newPlayers }))} format={num} />
+              <BarChart data={fillSeries(data.players.series, periods, (d) => d.newPlayers)} format={num} />
               <Breakdown title="All players by status" data={data.players.playersByStatus} />
             </section>
           </div>
 
           <section className="card">
             <h2>Matches</h2>
-            <BarChart data={data.matches.series.map((d) => ({ label: d.period, value: d.matches }))} format={num} />
+            <BarChart data={fillSeries(data.matches.series, periods, (d) => d.matches)} format={num} />
             <div className="three-col">
               <Breakdown title="By result" data={data.matches.byResult} />
               <Breakdown title="By mode" data={data.matches.byMode} />

@@ -14,6 +14,10 @@ import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
 import Account from './pages/Account';
+import Tournaments from './pages/Tournaments';
+import Kyc from './pages/Kyc';
+import Withdrawals from './pages/Withdrawals';
+import RevenueLogs from './pages/RevenueLogs';
 import './styles.css';
 
 function App() {
@@ -33,6 +37,10 @@ function App() {
         <Route path="settings" element={<Settings />} />
         <Route path="reports" element={<Reports />} />
         <Route path="account" element={<Account />} />
+        <Route path="tournaments" element={<Tournaments />} />
+        <Route path="kyc" element={<Kyc />} />
+        <Route path="withdrawals" element={<Withdrawals />} />
+        <Route path="revenue-logs" element={<RevenueLogs />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>

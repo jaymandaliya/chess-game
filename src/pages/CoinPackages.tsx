@@ -8,6 +8,7 @@ interface CoinPackage {
   id: string;
   name: string;
   coins: number;
+  bonusTournamentCoins: number;
   pricePaise: number;
   tag?: string;
   active: boolean;
@@ -19,12 +20,13 @@ interface FormState {
   id?: string;
   name: string;
   coins: string;
+  bonus: string;
   price: string;
   tag: string;
   sortOrder: string;
 }
 
-const EMPTY: FormState = { name: '', coins: '', price: '', tag: '', sortOrder: '0' };
+const EMPTY: FormState = { name: '', coins: '', bonus: '0', price: '', tag: '', sortOrder: '0' };
 
 export default function CoinPackages() {
   const list = useList<CoinPackage>('/admin/coin-packages', { sortBy: 'sortOrder', sortOrder: 'asc', limit: '50' });
@@ -48,9 +50,12 @@ export default function CoinPackages() {
     const coins = Number(form.coins);
     if (pricePaise === null || pricePaise < 100) return setError('Price must be at least ₹1, up to 2 decimals');
     if (!Number.isInteger(coins) || coins < 1) return setError('Coins must be a whole number above 0');
+    const bonusTournamentCoins = Number(form.bonus || 0);
+    if (!Number.isInteger(bonusTournamentCoins) || bonusTournamentCoins < 0) return setError('Tournament bonus must be 0 or more');
     const body = {
       name: form.name.trim(),
       coins,
+      bonusTournamentCoins,
       pricePaise,
       tag: form.tag.trim() || (form.id ? null : undefined),
       sortOrder: Number(form.sortOrder) || 0,
@@ -71,7 +76,8 @@ export default function CoinPackages() {
 
   const columns: Column<CoinPackage>[] = [
     { key: 'name', header: 'Name', sortable: true, render: (p) => <strong>{p.name}</strong> },
-    { key: 'coins', header: 'Coins', sortable: true, align: 'right', render: (p) => num(p.coins) },
+    { key: 'coins', header: 'Play coins', sortable: true, align: 'right', render: (p) => num(p.coins) },
+    { key: 'bonus', header: '+ Tournament', align: 'right', render: (p) => (p.bonusTournamentCoins ? <span className="badge gold">+{num(p.bonusTournamentCoins)}</span> : <span className="muted">—</span>) },
     { key: 'pricePaise', header: 'Price', sortable: true, align: 'right', render: (p) => rupees(p.pricePaise) },
     { key: 'perCoin', header: '₹ / 100 coins', align: 'right', render: (p) => rupees(Math.round((p.pricePaise * 100) / p.coins)) },
     { key: 'tag', header: 'Tag', render: (p) => p.tag ?? <span className="muted">—</span> },
@@ -87,7 +93,7 @@ export default function CoinPackages() {
             type="button"
             onClick={() => {
               setError(null);
-              setForm({ id: p.id, name: p.name, coins: String(p.coins), price: paiseToRupeesInput(p.pricePaise), tag: p.tag ?? '', sortOrder: String(p.sortOrder) });
+              setForm({ id: p.id, name: p.name, coins: String(p.coins), bonus: String(p.bonusTournamentCoins ?? 0), price: paiseToRupeesInput(p.pricePaise), tag: p.tag ?? '', sortOrder: String(p.sortOrder) });
             }}
           >
             Edit
@@ -121,10 +127,14 @@ export default function CoinPackages() {
               Name
               <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required minLength={2} maxLength={40} pattern="[A-Za-z0-9 &'\-]+" title="Letters, numbers, spaces, & ' -" />
             </label>
-            <div className="form-row">
+            <div className="form-row three">
               <label>
-                Coins
+                Play coins
                 <input type="number" min={1} step={1} value={form.coins} onChange={(e) => setForm({ ...form, coins: e.target.value })} required />
+              </label>
+              <label>
+                + Tournament coins (bonus)
+                <input type="number" min={0} step={1} value={form.bonus} onChange={(e) => setForm({ ...form, bonus: e.target.value })} />
               </label>
               <label>
                 Price (₹)

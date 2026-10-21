@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react';
+import { LogIn, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../auth';
 import { ErrorBanner } from '../components';
 
@@ -24,24 +25,44 @@ export default function Login() {
 
   return (
     <div className="login">
-      <form className="card login-card" onSubmit={submit}>
-        <div className="brand dark">
-          <span aria-hidden>♞</span> Chess Admin
+      <section className="login-hero">
+        <div className="brand" style={{ padding: 0 }}>
+          <span className="brand-mark" aria-hidden>
+            ♞
+          </span>
+          Chess Admin
         </div>
-        <p className="muted">Sign in with an admin account.</p>
-        <ErrorBanner message={error} />
-        <label>
-          Email
-          <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        </label>
-        <label>
-          Password
-          <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
-        </label>
-        <button type="submit" className="primary" disabled={busy}>
-          {busy ? 'Signing in…' : 'Sign in'}
-        </button>
-      </form>
+        <div>
+          <h1>Run your chess platform from one place.</h1>
+          <p>Players, tournaments, coin sales, payouts and every audit trail — live from the same data your players see.</p>
+        </div>
+        <p className="small" style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <ShieldCheck size={16} /> Every admin action is recorded in the audit log.
+        </p>
+      </section>
+      <section className="login-side">
+        <form className="login-card" onSubmit={submit}>
+          <div>
+            <h1>Sign in</h1>
+            <p className="muted" style={{ marginTop: 6 }}>
+              Use an admin or super admin account.
+            </p>
+          </div>
+          <ErrorBanner message={error} />
+          <label>
+            Email
+            <input type="email" autoComplete="username" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="admin@company.com" required />
+          </label>
+          <label>
+            Password
+            <input type="password" autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          </label>
+          <button type="submit" className="primary" disabled={busy}>
+            <LogIn size={16} />
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </section>
     </div>
   );
 }

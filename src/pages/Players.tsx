@@ -1,6 +1,7 @@
 import { useNavigate } from 'react-router-dom';
 import { useList } from '../hooks';
-import { Badge, DataTable, ErrorBanner, Pager, type Column } from '../components';
+import { Users } from 'lucide-react';
+import { Badge, DataTable, ErrorBanner, Pager, SearchInput, UserCell, type Column } from '../components';
 import { date, dateTime, num } from '../format';
 
 export interface PlayerRow {
@@ -15,8 +16,7 @@ export interface PlayerRow {
 }
 
 const COLUMNS: Column<PlayerRow>[] = [
-  { key: 'displayName', header: 'Player', sortable: true, render: (p) => <strong>{p.displayName}</strong> },
-  { key: 'email', header: 'Email', render: (p) => p.email },
+  { key: 'displayName', header: 'Player', sortable: true, render: (p) => <UserCell name={p.displayName} sub={p.email} /> },
   { key: 'role', header: 'Role', render: (p) => <Badge value={p.role} /> },
   { key: 'status', header: 'Status', render: (p) => <Badge value={p.status} /> },
   { key: 'rating', header: 'Rating', sortable: true, align: 'right', render: (p) => num(p.rating) },
@@ -31,16 +31,13 @@ export default function Players() {
   return (
     <div className="page">
       <header className="page-header">
-        <h1>Players</h1>
+        <div>
+          <h1><Users size={22} /> Players</h1>
+          <p>Search, filter and open any player for their full activity and coin ledger.</p>
+        </div>
       </header>
       <div className="toolbar">
-        <input
-          type="search"
-          placeholder="Search name or email"
-          defaultValue={list.get('search')}
-          onKeyDown={(e) => e.key === 'Enter' && list.set({ search: e.currentTarget.value.trim() })}
-          onBlur={(e) => e.currentTarget.value.trim() !== list.get('search') && list.set({ search: e.currentTarget.value.trim() })}
-        />
+        <SearchInput value={list.get('search')} placeholder="Search name or email" onSearch={(search) => list.set({ search })} />
         <select value={list.get('status')} onChange={(e) => list.set({ status: e.target.value })} aria-label="Status">
           <option value="">All statuses</option>
           <option value="ACTIVE">Active</option>
