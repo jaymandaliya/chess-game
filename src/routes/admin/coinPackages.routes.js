@@ -20,6 +20,7 @@ const nameSchema = z
 const fields = {
   name: nameSchema,
   coins: z.number().int().min(1).max(10_000_000),
+  bonusTournamentCoins: z.number().int().min(0).max(10_000_000),
   // ₹1 to ₹1,00,000
   pricePaise: z.number().int().min(100).max(10_000_000),
   tag: z.string().trim().max(20).nullable(),
@@ -50,7 +51,15 @@ router.get(
 router.post(
   '/',
   validate({
-    body: z.object({ ...fields, tag: fields.tag.optional(), sortOrder: fields.sortOrder.optional(), active: z.boolean().optional() }).strict(),
+    body: z
+      .object({
+        ...fields,
+        bonusTournamentCoins: fields.bonusTournamentCoins.optional(),
+        tag: fields.tag.optional(),
+        sortOrder: fields.sortOrder.optional(),
+        active: z.boolean().optional(),
+      })
+      .strict(),
   }),
   async (req, res) => {
     const body = req.valid.body;
@@ -60,7 +69,7 @@ router.post(
       action: 'PACKAGE_CREATED',
       targetType: 'COIN_PACKAGE',
       targetId: pkg._id,
-      metadata: { name: pkg.name, coins: pkg.coins, pricePaise: pkg.pricePaise, active: pkg.active },
+      metadata: { name: pkg.name, coins: pkg.coins, bonusTournamentCoins: pkg.bonusTournamentCoins, pricePaise: pkg.pricePaise, active: pkg.active },
     });
     return created(res, pkg);
   },

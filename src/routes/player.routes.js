@@ -122,17 +122,23 @@ router.get('/active-game', (req, res) => ok(res, { gameId: gameManager.activeGam
 // ---- Wallet ----
 
 router.get('/wallet', async (req, res) => {
-  const balance = await walletService.getBalance(req.user._id);
-  return ok(res, { balance, currency: 'COIN' });
+  const { play, tournament } = await walletService.getBalances(req.user._id);
+  return ok(res, { balance: play, tournamentBalance: tournament, currency: 'COIN' });
 });
 
 router.get(
   '/transactions',
-  validate({ query: listQuery(['createdAt', 'amount'], { type: z.enum(Transaction.TYPES).optional() }) }),
+  validate({
+    query: listQuery(['createdAt', 'amount'], {
+      type: z.enum(Transaction.TYPES).optional(),
+      coinType: z.enum(['PLAY', 'TOURNAMENT']).optional(),
+    }),
+  }),
   async (req, res) => {
     const q = req.valid.query;
     const filter = { userId: req.user._id };
     if (q.type) filter.type = q.type;
+    if (q.coinType) filter.coinType = q.coinType;
     const range = dateRange(q.from, q.to);
     if (range) filter.createdAt = range;
     return ok(res, await paginate(Transaction, filter, q));
@@ -173,5 +179,7 @@ router.get('/coin-orders/:id', validate({ params: idParam }), async (req, res) =
   );
   return ok(res, order);
 });
+
+router.use(require('./playerExtra.routes'));
 
 module.exports = router;

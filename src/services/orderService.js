@@ -46,8 +46,16 @@ async function createOrder(user, packageId) {
   const order = await Order.create({
     orderNumber,
     userId: user._id,
-    package: { packageId: pkg._id, name: pkg.name, coins: pkg.coins, pricePaise: pkg.pricePaise, tag: pkg.tag },
+    package: {
+      packageId: pkg._id,
+      name: pkg.name,
+      coins: pkg.coins,
+      pricePaise: pkg.pricePaise,
+      bonusTournamentCoins: pkg.bonusTournamentCoins || 0,
+      tag: pkg.tag,
+    },
     coins: pkg.coins,
+    tournamentCoins: pkg.bonusTournamentCoins || 0,
     amountPaise: pkg.pricePaise,
     currency: 'INR',
     status: 'PENDING',
@@ -90,11 +98,26 @@ async function markPaid({ providerOrderId, providerPaymentId, amountPaise, curre
       },
       session,
     );
+    if (order.tournamentCoins > 0) {
+      await walletService.credit(
+        {
+          userId: order.userId,
+          amount: order.tournamentCoins,
+          coinType: 'TOURNAMENT',
+          type: 'BONUS',
+          refType: 'ORDER',
+          refId: String(order._id),
+          idempotencyKey: `order:${order._id}:tournament`,
+          description: `Tournament bonus with ${order.package.name}`,
+        },
+        session,
+      );
+    }
     await audit(req, {
       action: 'PAYMENT_CAPTURED',
       targetType: 'ORDER',
       targetId: order._id,
-      metadata: { orderNumber: order.orderNumber, amountPaise, coins: order.coins, via },
+      metadata: { orderNumber: order.orderNumber, amountPaise, coins: order.coins, tournamentCoins: order.tournamentCoins, via },
     }, session);
     return { order: paid, alreadyProcessed: false };
   });
@@ -120,6 +143,7 @@ async function markRefunded({ providerPaymentId }, req) {
 
     const wallet = await Wallet.findOne({ userId: order.userId }).session(session);
     const reversible = Math.min(order.coins, wallet ? wallet.balance : 0);
+    const reversibleBonus = Math.min(order.tournamentCoins || 0, wallet ? wallet.tournamentBalance || 0 : 0);
     if (reversible > 0) {
       await walletService.debit(
         {
@@ -134,11 +158,31 @@ async function markRefunded({ providerPaymentId }, req) {
         session,
       );
     }
+    if (reversibleBonus > 0) {
+      await walletService.debit(
+        {
+          userId: order.userId,
+          amount: reversibleBonus,
+          coinType: 'TOURNAMENT',
+          type: 'REVERSAL',
+          refType: 'ORDER',
+          refId: String(order._id),
+          idempotencyKey: `refund:${order._id}:tournament`,
+          description: `Refund of ${order.orderNumber} (tournament bonus)`,
+        },
+        session,
+      );
+    }
     await audit(req, {
       action: 'PAYMENT_REFUNDED',
       targetType: 'ORDER',
       targetId: order._id,
-      metadata: { orderNumber: order.orderNumber, coinsReversed: reversible, shortfall: order.coins - reversible },
+      metadata: {
+        orderNumber: order.orderNumber,
+        coinsReversed: reversible,
+        shortfall: order.coins - reversible,
+        tournamentCoinsReversed: reversibleBonus,
+      },
     }, session);
     return order;
   });

@@ -10,7 +10,10 @@ const manager = require('./gameManager');
 
 const square = z.string().regex(/^[a-h][1-8]$/);
 const schemas = {
-  queueJoin: z.object({ timeControl: z.enum(Object.keys(manager.TIME_CONTROLS)) }),
+  queueJoin: z.object({
+    timeControl: z.enum(Object.keys(manager.TIME_CONTROLS)),
+    stake: z.number().int().min(0).max(100000).default(0),
+  }),
   computer: z.object({ level: z.number().int().min(1).max(3).default(2), color: z.enum(['white', 'black', 'random']).default('random') }),
   gameId: z.object({ gameId: z.string().min(1).max(64) }),
   move: z.object({
@@ -91,10 +94,10 @@ function attachSocket(httpServer, options = {}) {
     // Re-read the rating at the moment of joining, so it reflects the last finished game
     const freshUser = async () => (await User.findById(userId)) || user;
 
-    socket.on('queue:join', handler(schemas.queueJoin, async ({ timeControl }) => {
+    socket.on('queue:join', handler(schemas.queueJoin, async ({ timeControl, stake }) => {
       await assertNotMaintenance();
-      manager.joinQueue(await freshUser(), timeControl);
-      return { timeControl };
+      await manager.joinQueue(await freshUser(), timeControl, stake);
+      return { timeControl, stake };
     }));
     socket.on('queue:leave', handler(null, async () => ({ left: manager.leaveQueue(userId) })));
 
@@ -117,6 +120,7 @@ function attachSocket(httpServer, options = {}) {
   });
 
   manager.init(io, options);
+  require('../services/tournamentService').init(io);
   return io;
 }
 

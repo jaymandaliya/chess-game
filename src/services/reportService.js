@@ -3,6 +3,10 @@ const User = require('../models/User');
 const Order = require('../models/Order');
 const Match = require('../models/Match');
 const AuditLog = require('../models/AuditLog');
+const KycProfile = require('../models/KycProfile');
+const Withdrawal = require('../models/Withdrawal');
+const Tournament = require('../models/Tournament');
+const PlatformFee = require('../models/PlatformFee');
 const { startOfDayIST, daysAgo } = require('../utils/time');
 
 const ACTIVE_WINDOW_DAYS = 30;
@@ -159,6 +163,12 @@ async function dashboardSummary() {
     User.countDocuments({ role: 'PLAYER', createdAt: { $gte: today } }),
     activityFeed(10),
   ]);
+  const [pendingKyc, pendingWithdrawals, activeTournaments, feeRow] = await Promise.all([
+    KycProfile.countDocuments({ status: 'PENDING' }),
+    Withdrawal.countDocuments({ status: 'PENDING' }),
+    Tournament.countDocuments({ status: { $in: ['REGISTRATION', 'RUNNING'] } }),
+    PlatformFee.aggregate([{ $group: { _id: null, coins: { $sum: '$coins' } } }]),
+  ]);
   return {
     totalPlayers,
     activePlayers,
@@ -167,6 +177,10 @@ async function dashboardSummary() {
     pendingPayments,
     completedMatches,
     newPlayersToday,
+    pendingKyc,
+    pendingWithdrawals,
+    activeTournaments,
+    platformFeeCoins: feeRow[0] ? feeRow[0].coins : 0,
     recentActivity,
   };
 }

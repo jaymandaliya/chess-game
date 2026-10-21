@@ -11,12 +11,15 @@ const CoinPackage = require('../src/models/CoinPackage');
 const Match = require('../src/models/Match');
 const { hashPassword } = require('../src/utils/password');
 
+// Price ladder: bigger packs give more coins per rupee, plus tournament-only bonus coins.
+// Edit live values from the admin panel; this only creates missing packages.
 const PACKAGES = [
-  { name: 'Pawn', coins: 100, pricePaise: 2500, sortOrder: 1 },
-  { name: 'Knight', coins: 500, pricePaise: 9900, sortOrder: 2 },
-  { name: 'Champion', coins: 2500, pricePaise: 39900, tag: 'MOST POPULAR', sortOrder: 3 },
-  { name: 'Grandmaster', coins: 6000, pricePaise: 79900, tag: 'BEST VALUE', sortOrder: 4 },
+  { name: 'Starter', pricePaise: 9900, coins: 100, bonusTournamentCoins: 30, sortOrder: 1 },
+  { name: 'Pro', pricePaise: 29900, coins: 400, bonusTournamentCoins: 100, tag: 'POPULAR', sortOrder: 2 },
+  { name: 'Elite', pricePaise: 49900, coins: 700, bonusTournamentCoins: 200, sortOrder: 3 },
+  { name: 'Master', pricePaise: 99900, coins: 1500, bonusTournamentCoins: 500, tag: 'BEST VALUE', sortOrder: 4 },
 ];
+const LEGACY_PACKAGES = ['pawn', 'knight', 'champion', 'grandmaster'];
 
 const SAMPLE_PLAYERS = ['Vikash Kumar', 'Priya Sharma', 'Arjun Patel', 'Neha Singh', 'Rohan Mehta', 'Ananya Rao'];
 const TIME_CONTROLS = [
@@ -51,6 +54,9 @@ async function seedAdmin() {
 }
 
 async function seedPackages() {
+  // Packages from the first version are switched off (kept for order history)
+  const legacy = await CoinPackage.updateMany({ nameKey: { $in: LEGACY_PACKAGES }, active: true }, { active: false });
+  if (legacy.modifiedCount) console.log(`Disabled ${legacy.modifiedCount} legacy packages`);
   for (const pkg of PACKAGES) {
     const nameKey = pkg.name.toLowerCase();
     if (await CoinPackage.exists({ nameKey })) continue;

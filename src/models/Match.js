@@ -1,7 +1,7 @@
 const { Schema, model } = require('mongoose');
 const { toJsonPlugin } = require('./plugins');
 
-const MODES = ['RATED', 'CASUAL', 'VS_COMPUTER'];
+const MODES = ['RATED', 'CASUAL', 'VS_COMPUTER', 'TOURNAMENT'];
 const RESULTS = ['WHITE_WIN', 'BLACK_WIN', 'DRAW', 'ABORTED'];
 const STATUSES = ['ONGOING', 'COMPLETED', 'ABORTED'];
 const TERMINATIONS = [
@@ -36,6 +36,14 @@ const matchSchema = new Schema(
     termination: { type: String, enum: TERMINATIONS },
     winnerId: { type: Schema.Types.ObjectId, ref: 'User' },
     moveCount: { type: Number, default: 0 },
+    // Play coins each player put in (0 = free game). Winner gets the pot minus the platform fee.
+    stakeCoins: { type: Number, default: 0 },
+    payout: {
+      winnerCoins: Number,
+      feeCoins: Number,
+      refunded: Boolean,
+    },
+    tournamentId: { type: Schema.Types.ObjectId, ref: 'Tournament', index: true },
     pgn: String,
     startedAt: { type: Date, required: true },
     endedAt: Date,

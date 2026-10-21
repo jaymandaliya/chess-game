@@ -19,7 +19,16 @@ if (isProd && paymentProvider === 'mock') {
   throw new Error('PAYMENT_PROVIDER=mock is not allowed in production');
 }
 
+const kycEncryptionKey = process.env.KYC_ENCRYPTION_KEY || '';
+if (kycEncryptionKey && !/^[0-9a-f]{64}$/i.test(kycEncryptionKey)) {
+  throw new Error('KYC_ENCRYPTION_KEY must be 64 hex characters (32 bytes)');
+}
+if (isProd && !kycEncryptionKey) {
+  throw new Error('KYC_ENCRYPTION_KEY is required in production');
+}
+
 module.exports = {
+  kycEncryptionKey,
   nodeEnv,
   isProd,
   isTest: nodeEnv === 'test',

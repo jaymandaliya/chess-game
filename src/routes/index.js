@@ -20,6 +20,9 @@ admin.use('/game-activity', require('./admin/gameActivity.routes'));
 admin.use('/audit-logs', require('./admin/auditLogs.routes'));
 admin.use('/settings', require('./admin/settings.routes'));
 admin.use('/reports', require('./admin/reports.routes'));
+admin.use('/tournaments', require('./admin/tournaments.routes'));
+admin.use('/revenue-logs', require('./admin/revenue.routes'));
+admin.use(require('./admin/money.routes'));
 router.use('/admin', admin);
 
 module.exports = router;

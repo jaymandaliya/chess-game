@@ -4,6 +4,9 @@ const User = require('../models/User');
 const AppError = require('../utils/AppError');
 const logger = require('../utils/logger');
 const { withTransaction } = require('../utils/transaction');
+const PlatformFee = require('../models/PlatformFee');
+const walletService = require('../services/walletService');
+const { getSettings, feeFor } = require('../services/settingsService');
 const { newRatings } = require('./elo');
 const { chooseMoveAsync } = require('./engineWorker');
 
@@ -80,6 +83,9 @@ function stateFor(game, userId) {
     gameId: game.id,
     mode: game.mode,
     timeControl: game.timeControl,
+    stake: game.stake,
+    feePercent: game.feePercent,
+    tournamentId: game.tournament ? game.tournament.tournamentId : null,
     white: publicSide(game.white),
     black: publicSide(game.black),
     yourColor: colorOf(game, userId),
@@ -127,15 +133,50 @@ function clearTimer(game, name) {
 
 // ---- Game lifecycle ----
 
-async function createGame({ white, black, mode, timeControl }) {
+// Listeners notified after a game result is saved (tournaments advance their brackets from here)
+const finishListeners = [];
+function onGameFinished(fn) {
+  finishListeners.push(fn);
+}
+
+async function createGame({ white, black, mode, timeControl, stake = 0, tournament = null }) {
   const startedAt = new Date();
-  const match = await Match.create({
-    white: { userId: white.userId, displayName: white.displayName, ratingBefore: white.rating },
-    black: { userId: black.userId, displayName: black.displayName, ratingBefore: black.rating },
-    mode,
-    timeControl,
-    status: 'ONGOING',
-    startedAt,
+  const feePercent = stake > 0 ? (await getSettings()).winningsFeePercent : 0;
+
+  // Match record and both stakes are created atomically: no game without coins, no coins lost without a game
+  const match = await withTransaction(async (session) => {
+    const [created] = await Match.create(
+      [
+        {
+          white: { userId: white.userId, displayName: white.displayName, ratingBefore: white.rating },
+          black: { userId: black.userId, displayName: black.displayName, ratingBefore: black.rating },
+          mode,
+          timeControl,
+          stakeCoins: stake,
+          tournamentId: tournament ? tournament.tournamentId : undefined,
+          status: 'ONGOING',
+          startedAt,
+        },
+      ],
+      { session },
+    );
+    if (stake > 0) {
+      for (const side of [white, black]) {
+        await walletService.debit(
+          {
+            userId: side.userId,
+            amount: stake,
+            type: 'STAKE',
+            refType: 'MATCH',
+            refId: String(created._id),
+            idempotencyKey: `stake:${created._id}:${side.userId}`,
+            description: `Entry for ${timeControl.label} game`,
+          },
+          session,
+        );
+      }
+    }
+    return created;
   });
 
   const initialMs = timeControl.initialSeconds * 1000;
@@ -147,6 +188,9 @@ async function createGame({ white, black, mode, timeControl }) {
     black,
     chess: new Chess(),
     clocks: initialMs > 0 ? { w: initialMs, b: initialMs } : null,
+    stake,
+    feePercent,
+    tournament,
     turnStartedAt: Date.now(),
     status: 'ACTIVE',
     drawOfferBy: null,
@@ -310,6 +354,7 @@ async function finish(game, result, termination) {
         set['white.ratingAfter'] = after.white;
         set['black.ratingAfter'] = after.black;
       }
+      if (game.stake > 0) Object.assign(set, await settleStakes(game, winner, session));
       await Match.updateOne({ _id: game.id }, { $set: set }, { session });
       if (after) {
         for (const [side, rating] of [[game.white, after.white], [game.black, after.black]]) {
@@ -319,6 +364,12 @@ async function finish(game, result, termination) {
     });
   } catch (err) {
     logger.error({ err, gameId: game.id }, 'Failed to persist game result');
+  }
+
+  for (const listener of finishListeners) {
+    Promise.resolve()
+      .then(() => listener({ gameId: game.id, tournament: game.tournament, result, winnerUserId: winner ? winner.userId : null }))
+      .catch((err) => logger.error({ err, gameId: game.id }, 'Game finish listener failed'));
   }
 
   emitToGame(game, 'game:end', {
@@ -342,6 +393,58 @@ async function finish(game, result, termination) {
     disconnectTimers.delete(userId);
   }
   setTimeout(() => games.delete(game.id), ENDED_GAME_TTL_MS).unref();
+}
+
+// Winner takes the pot minus the platform fee; a draw or aborted game returns each stake.
+// Runs inside finish()'s transaction, so the result and the coins are saved together.
+async function settleStakes(game, winner, session) {
+  const gameId = game.id;
+  if (!winner) {
+    for (const side of [game.white, game.black]) {
+      await walletService.credit(
+        {
+          userId: side.userId,
+          amount: game.stake,
+          type: 'STAKE_REFUND',
+          refType: 'MATCH',
+          refId: gameId,
+          idempotencyKey: `stakerefund:${gameId}:${side.userId}`,
+          description: 'Entry returned (draw / aborted game)',
+        },
+        session,
+      );
+    }
+    return { payout: { refunded: true, winnerCoins: 0, feeCoins: 0 } };
+  }
+  const pot = game.stake * 2;
+  const fee = feeFor(pot, game.feePercent);
+  await walletService.credit(
+    {
+      userId: winner.userId,
+      amount: pot - fee,
+      type: 'WINNINGS',
+      refType: 'MATCH',
+      refId: gameId,
+      idempotencyKey: `winnings:${gameId}`,
+      description: `Won ${pot} coin pot (${game.feePercent}% platform fee)`,
+    },
+    session,
+  );
+  if (fee > 0) {
+    await PlatformFee.create(
+      [{
+        source: 'GAME',
+        coins: fee,
+        feePercent: game.feePercent,
+        grossCoins: pot,
+        refType: 'MATCH',
+        refId: gameId,
+        userIds: [game.white.userId, game.black.userId],
+      }],
+      { session },
+    );
+  }
+  return { payout: { refunded: false, winnerCoins: pot - fee, feeCoins: fee } };
 }
 
 // ---- Player actions ----
@@ -409,19 +512,25 @@ function startComputerGame(user, { level, color }) {
 
 // ---- Matchmaking ----
 
-function joinQueue(user, timeControlKey) {
+async function joinQueue(user, timeControlKey, stake = 0) {
   const tc = TIME_CONTROLS[timeControlKey];
   if (!tc) throw AppError.unprocessable('Unknown time control', 'INVALID_TIME_CONTROL');
+  const { stakeOptions } = await getSettings();
+  if (!stakeOptions.includes(stake)) throw AppError.unprocessable('This entry amount is not available', 'INVALID_STAKE');
   if (activeGameIdFor(user._id)) throw AppError.conflict('Finish your current game first', 'ALREADY_IN_GAME');
+  if (stake > 0 && (await walletService.getBalance(user._id)) < stake) {
+    throw AppError.conflict(`You need ${stake} coins to join this game`, 'INSUFFICIENT_BALANCE');
+  }
   leaveQueue(user._id);
   queue.push({
     userId: String(user._id),
     displayName: user.displayName,
     rating: user.rating,
     timeControl: timeControlKey,
+    stake,
     joinedAt: Date.now(),
   });
-  emitToUser(String(user._id), 'queue:joined', { timeControl: timeControlKey });
+  emitToUser(String(user._id), 'queue:joined', { timeControl: timeControlKey, stake });
   matchQueue();
 }
 
@@ -441,7 +550,7 @@ function matchQueue() {
     for (let j = i + 1; j < queue.length; j += 1) {
       const a = queue[i];
       const b = queue[j];
-      if (a.timeControl !== b.timeControl) continue;
+      if (a.timeControl !== b.timeControl || a.stake !== b.stake) continue;
       const diff = Math.abs(a.rating - b.rating);
       if (diff > ratingWindow(a) || diff > ratingWindow(b)) continue;
 
@@ -454,7 +563,13 @@ function matchQueue() {
         black: { userId: black.userId, displayName: black.displayName, rating: black.rating },
         mode: 'RATED',
         timeControl: { initialSeconds, incrementSeconds, label: a.timeControl },
-      }).catch((err) => logger.error({ err }, 'Failed to create game'));
+        stake: a.stake,
+      }).catch((err) => {
+        // Usually a balance that dropped while queued: tell both players, nobody is charged
+        logger.warn({ err: err.message }, 'Failed to create game');
+        const reason = err.code === 'INSUFFICIENT_BALANCE' ? 'A player no longer has enough coins' : 'Could not start the game';
+        for (const entry of [a, b]) emitToUser(entry.userId, 'queue:cancelled', { reason });
+      });
       i -= 1;
       break;
     }
@@ -508,12 +623,32 @@ async function onDisconnect(user) {
 }
 
 // Games are in memory, so anything still ONGOING after a restart cannot continue
+// Stakes of interrupted games are returned to both players.
 async function abortStaleMatches() {
-  const res = await Match.updateMany(
-    { status: 'ONGOING' },
-    { $set: { status: 'ABORTED', result: 'ABORTED', endedAt: new Date() } },
-  );
-  if (res.modifiedCount) logger.warn(`Aborted ${res.modifiedCount} games interrupted by restart`);
+  const stale = await Match.find({ status: 'ONGOING' });
+  for (const match of stale) {
+    await withTransaction(async (session) => {
+      const claimed = await Match.findOneAndUpdate(
+        { _id: match._id, status: 'ONGOING' },
+        { $set: { status: 'ABORTED', result: 'ABORTED', endedAt: new Date() } },
+        { new: true, session },
+      );
+      if (!claimed || !(claimed.stakeCoins > 0)) return;
+      const game = { id: String(claimed._id), stake: claimed.stakeCoins, white: claimed.white, black: claimed.black };
+      const { payout } = await settleStakes(game, null, session);
+      await Match.updateOne({ _id: claimed._id }, { $set: { payout } }, { session });
+    });
+  }
+  if (stale.length) logger.warn(`Aborted ${stale.length} games interrupted by restart`);
+}
+
+// True while the game is in memory, including the minute after it ends (its result may still be being recorded)
+function isGameLive(gameId) {
+  return games.has(String(gameId));
+}
+
+function isUserOnline(userId) {
+  return Boolean(io && io.sockets.adapter.rooms.get(`user:${userId}`)?.size);
 }
 
 function reset() {
@@ -541,6 +676,10 @@ module.exports = {
   respondDraw,
   sync,
   startComputerGame,
+  createGame,
+  onGameFinished,
+  isUserOnline,
+  isGameLive,
   joinQueue,
   leaveQueue,
   activeGameIdFor,

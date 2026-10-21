@@ -7,6 +7,8 @@ const coinPackageSchema = new Schema(
     // Lower-cased name, enforces case-insensitive uniqueness
     nameKey: { type: String, required: true, unique: true },
     coins: { type: Number, required: true, min: 1, validate: Number.isInteger },
+    // Extra tournament-only coins given with the package (e.g. ₹99 → 100 play + 30 tournament)
+    bonusTournamentCoins: { type: Number, default: 0, min: 0, validate: Number.isInteger },
     pricePaise: { type: Number, required: true, min: 1, validate: Number.isInteger },
     tag: { type: String, trim: true },
     active: { type: Boolean, default: true, index: true },
