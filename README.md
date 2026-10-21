@@ -116,3 +116,22 @@ Scaling out needs the Socket.IO Redis adapter plus shared game state.
 
 With `PAYMENT_PROVIDER=mock`, `POST /payments/mock/complete { providerOrderId }` completes a checkout for testing the app
 without Razorpay; the route does not exist with the real provider.
+
+## Coin economy (v2)
+
+- **Two coin types** per wallet: `PLAY` (daily games, prizes, withdrawable when enabled) and `TOURNAMENT`
+  (tournament entry only). Every ledger row has a `coinType`.
+- **Packages** carry `bonusTournamentCoins` (default ladder: ₹99 → 100 + 30, ₹299 → 400 + 100, ₹499 → 700 + 200,
+  ₹999 → 1500 + 500). Both are credited in the same transaction when the payment is verified.
+- **Coin entry for online games**: `queue:join { timeControl, stake }` with `stake` from the `stakeOptions` setting.
+  Stakes are debited when the game is created; the winner gets the pot minus `winningsFeePercent` (default 15%);
+  draws/aborts and games interrupted by a restart are refunded. Fees are stored in `PlatformFee`.
+- **Tournaments** (knockout): admin creates (`POST /admin/tournaments`), players join with tournament coins,
+  tap Ready (`POST /player/tournaments/:id/ready`), the server starts each game; draws replay (3 draws → higher seed),
+  round deadlines apply forfeits, prizes (split of the pool after the fee) are paid as play coins.
+- **KYC** (`/player/kyc`, `/admin/kyc`): PAN + UPI/bank, encrypted with AES-256-GCM (`KYC_ENCRYPTION_KEY`, 64 hex,
+  required in production). Admin reveal is audited.
+- **Withdrawals** (`/player/withdrawals`, `/admin/withdrawals`): coins × `coinValuePaise`, minus `withdrawalTdsPercent`
+  TDS, KYC required, admin marks paid (UTR) or rejects (coins returned). **Off by default** (`withdrawalsEnabled`):
+  get legal clearance under India's Promotion and Regulation of Online Gaming Act, 2025 before enabling.
+- **Admin**: `/admin/players/:id/activity` (timeline), `/admin/players/:id/transactions`, `/admin/revenue-logs`.
