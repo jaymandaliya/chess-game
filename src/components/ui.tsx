@@ -10,6 +10,7 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import type { TextInputInstance } from 'react-native';
 import { colors, spacing } from '../theme';
 
 interface ButtonProps {
@@ -39,17 +40,30 @@ export function Button({ title, onPress, variant = 'primary', loading, disabled,
   );
 }
 
-export function Field({ label, error, ...props }: TextInputProps & { label: string; error?: string }) {
+// forwardRef so forms can move focus to the next field when Return is pressed
+export const Field = React.forwardRef<TextInputInstance, TextInputProps & { label: string; error?: string }>(
+  function Field({ label, error, style, ...props }, ref) {
+    return (
+      <View style={styles.field}>
+        <Text style={styles.label}>{label}</Text>
+        <TextInput
+          ref={ref}
+          placeholderTextColor={colors.muted}
+          style={[styles.input, error ? { borderColor: colors.danger } : null, style]}
+          {...props}
+        />
+        {error ? <Text style={styles.error}>{error}</Text> : null}
+      </View>
+    );
+  },
+);
+
+// Small text button: its tap area is only the text itself, not the full row
+export function LinkButton({ title, onPress }: { title: string; onPress(): void }) {
   return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        placeholderTextColor={colors.muted}
-        style={[styles.input, error ? { borderColor: colors.danger } : null]}
-        {...props}
-      />
-      {error ? <Text style={styles.error}>{error}</Text> : null}
-    </View>
+    <Pressable accessibilityRole="link" onPress={onPress} hitSlop={8} style={styles.link}>
+      <Text style={styles.linkText}>{title}</Text>
+    </Pressable>
   );
 }
 
@@ -105,6 +119,8 @@ export const styles = StyleSheet.create({
     fontSize: 16,
   },
   error: { color: colors.danger, fontSize: 12 },
+  link: { alignSelf: 'center', paddingVertical: 6, paddingHorizontal: 4 },
+  linkText: { color: colors.primary, fontSize: 15, fontWeight: '600' },
   errorBox: { color: colors.text, backgroundColor: '#5c2626', padding: spacing.md, borderRadius: 8, overflow: 'hidden' },
   card: { backgroundColor: colors.card, borderRadius: 12, padding: spacing.lg, gap: spacing.sm },
   title: { color: colors.text, fontSize: 20, fontWeight: '800' },

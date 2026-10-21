@@ -33,7 +33,17 @@ export default function ForgotPasswordScreen() {
         <>
           <Muted>Enter your account email and we will send you a reset link.</Muted>
           <ErrorText message={error} />
-          <Field label="Email" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" />
+          <Field
+            label="Email"
+            value={email}
+            onChangeText={setEmail}
+            autoCapitalize="none"
+            autoCorrect={false}
+            keyboardType="email-address"
+            textContentType="username"
+            returnKeyType="send"
+            onSubmitEditing={() => email.trim() && !loading && submit()}
+          />
           <Button title="Send reset link" onPress={submit} loading={loading} disabled={!email} />
         </>
       )}
