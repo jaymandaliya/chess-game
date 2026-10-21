@@ -1,4 +1,4 @@
-import { API_URL } from '../config';
+import { API_URL, REQUEST_TIMEOUT_MS } from '../config';
 import { SessionUser } from './types';
 import { clearTokens, getAccessToken, loadRefreshToken, saveRefreshToken, setAccessToken } from './tokenStore';
 
@@ -29,6 +29,13 @@ export async function storeSession(session: SessionPayload): Promise<void> {
   await saveRefreshToken(session.refreshToken);
 }
 
+// fetch with a hard timeout: a server that can't be reached must surface as an error, not a spinner
+function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 let refreshing: Promise<SessionPayload | null> | null = null;
 
 // Single-flight: parallel 401s share one refresh call (each refresh token works only once)
@@ -38,7 +45,7 @@ export function refreshSession(): Promise<SessionPayload | null> {
       const refreshToken = await loadRefreshToken();
       if (!refreshToken) return null;
       try {
-        const res = await fetch(`${API_URL}/api/v1/auth/refresh`, {
+        const res = await fetchWithTimeout(`${API_URL}/api/v1/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ refreshToken }),
@@ -73,7 +80,7 @@ async function send(path: string, { method = 'GET', body, auth = true }: Request
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const token = getAccessToken();
   if (auth && token) headers.Authorization = `Bearer ${token}`;
-  return fetch(`${API_URL}/api/v1${path}`, {
+  return fetchWithTimeout(`${API_URL}/api/v1${path}`, {
     method,
     headers,
     body: body !== undefined ? JSON.stringify(body) : undefined,
@@ -94,7 +101,12 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     }
   } catch (err) {
     if (err instanceof ApiError) throw err;
-    throw new ApiError('NETWORK_ERROR', 'Cannot reach the server. Check your connection.', 0);
+    const timedOut = err instanceof Error && err.name === 'AbortError';
+    throw new ApiError(
+      timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
+      timedOut ? 'The server is taking too long to respond. Please try again.' : 'Cannot reach the server. Check your internet connection.',
+      0,
+    );
   }
 
   const json = await res.json().catch(() => null);

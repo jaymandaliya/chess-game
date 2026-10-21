@@ -2,12 +2,13 @@ import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import RazorpayCheckout from 'react-native-razorpay';
+import { ArrowDownLeft, ArrowUpRight, Coins, ShieldCheck } from 'lucide-react-native';
 import { api, errorMessage, formatRupees } from '../api/client';
 import { Checkout, CoinPackage, Order, Page, WalletTransaction } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
-import { Card, Muted, styles as ui, Title } from '../components/ui';
+import { GradientCard, IconBadge, Muted, SectionTitle, styles as ui } from '../components/ui';
 import { APP_NAME } from '../config';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing, type } from '../theme';
 
 const TX_LABELS: Record<WalletTransaction['type'], string> = {
   PURCHASE: 'Coins purchased',
@@ -105,7 +106,7 @@ export default function WalletScreen() {
         });
       }
 
-      if (result.order.status === 'PAID') Alert.alert('Coins added', `${pkg.coins} coins were added to your wallet.`);
+      if (result.order.status === 'PAID') Alert.alert('Coins added', `${pkg.coins.toLocaleString('en-IN')} coins were added to your wallet.`);
       else Alert.alert('Payment processing', 'Your coins will appear as soon as the payment is confirmed.');
       await load();
     } catch (err) {
@@ -118,37 +119,56 @@ export default function WalletScreen() {
   }
 
   const header = (
-    <View style={{ gap: spacing.md, marginBottom: spacing.md }}>
-      <Card style={{ alignItems: 'center' }}>
-        <Muted>Balance</Muted>
-        <Text style={styles.balance}>● {balance ?? '—'}</Text>
-        <Muted>coins</Muted>
-      </Card>
-      <Title>Buy coins</Title>
+    <View style={styles.headerBlock}>
+      <GradientCard from="#78350F" to="#1C1917" style={styles.balanceCard}>
+        <View style={ui.row}>
+          <IconBadge icon={Coins} color={colors.gold} size={44} />
+          <Text style={type.overline}>Coin balance</Text>
+        </View>
+        <Text style={styles.balance}>{balance === null ? '—' : balance.toLocaleString('en-IN')}</Text>
+        <Muted>Use coins across Chess Platform</Muted>
+      </GradientCard>
+
+      <SectionTitle title="Buy coins" />
       <View style={styles.grid}>
         {packages.map((pkg) => (
           <Pressable
             key={pkg.id}
             onPress={() => buy(pkg)}
             disabled={buying !== null}
-            style={({ pressed }) => [styles.pkg, pkg.tag ? styles.pkgTagged : null, { opacity: pressed ? 0.85 : 1 }]}
+            style={({ pressed }) => [styles.pkg, pkg.tag ? styles.pkgTagged : null, pressed && styles.pressed]}
+            accessibilityLabel={`${pkg.name}, ${pkg.coins} coins for ${formatRupees(pkg.pricePaise)}`}
           >
-            {pkg.tag ? <Text style={styles.tag}>{pkg.tag}</Text> : null}
-            <Text style={styles.pkgName}>{pkg.name}</Text>
-            <Text style={styles.pkgCoins}>● {pkg.coins.toLocaleString('en-IN')}</Text>
-            {buying === pkg.id ? <ActivityIndicator color={colors.text} /> : <Text style={styles.price}>{formatRupees(pkg.pricePaise)}</Text>}
+            {pkg.tag ? (
+              <View style={styles.tag}>
+                <Text style={styles.tagText}>{pkg.tag}</Text>
+              </View>
+            ) : (
+              <View style={styles.tagSpacer} />
+            )}
+            <Coins size={26} color={colors.gold} />
+            <Text style={styles.pkgCoins}>{pkg.coins.toLocaleString('en-IN')}</Text>
+            <Text style={type.caption}>{pkg.name}</Text>
+            <View style={styles.price}>
+              {buying === pkg.id ? <ActivityIndicator color={colors.onPrimary} /> : <Text style={styles.priceText}>{formatRupees(pkg.pricePaise)}</Text>}
+            </View>
           </Pressable>
         ))}
         {packages.length === 0 ? <Muted>No packages available right now.</Muted> : null}
       </View>
-      <Title>History</Title>
+      <View style={styles.secure}>
+        <ShieldCheck size={14} color={colors.muted} />
+        <Muted>Payments are processed securely by Razorpay</Muted>
+      </View>
+
+      <SectionTitle title="Activity" />
     </View>
   );
 
   return (
     <FlatList
       style={ui.screen}
-      contentContainerStyle={{ padding: spacing.lg }}
+      contentContainerStyle={styles.list}
       data={txs}
       keyExtractor={(t) => t.id}
       ListHeaderComponent={header}
@@ -156,33 +176,66 @@ export default function WalletScreen() {
       ListFooterComponent={loadingMore ? <ActivityIndicator color={colors.primary} /> : undefined}
       onEndReached={loadMore}
       onEndReachedThreshold={0.4}
-      refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.primary} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
-      renderItem={({ item }) => (
-        <View style={styles.tx}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.txTitle}>{item.description ?? TX_LABELS[item.type]}</Text>
-            <Muted>{new Date(item.createdAt).toLocaleString('en-IN')}</Muted>
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          tintColor={colors.primary}
+          onRefresh={async () => {
+            setRefreshing(true);
+            await load();
+            setRefreshing(false);
+          }}
+        />
+      }
+      renderItem={({ item }) => {
+        const credit = item.amount > 0;
+        return (
+          <View style={styles.tx}>
+            <IconBadge icon={credit ? ArrowDownLeft : ArrowUpRight} color={credit ? colors.win : colors.loss} size={38} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.txTitle} numberOfLines={1}>
+                {item.description ?? TX_LABELS[item.type]}
+              </Text>
+              <Muted>{new Date(item.createdAt).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })}</Muted>
+            </View>
+            <Text style={[styles.txAmount, { color: credit ? colors.win : colors.loss }]}>
+              {credit ? '+' : ''}
+              {item.amount.toLocaleString('en-IN')}
+            </Text>
           </View>
-          <Text style={[styles.txAmount, { color: item.amount > 0 ? colors.win : colors.loss }]}>
-            {item.amount > 0 ? '+' : ''}
-            {item.amount}
-          </Text>
-        </View>
-      )}
+        );
+      }}
     />
   );
 }
 
 const styles = StyleSheet.create({
-  balance: { color: colors.coin, fontSize: 40, fontWeight: '800' },
+  list: { padding: spacing.lg, paddingBottom: spacing.xxl },
+  headerBlock: { gap: spacing.md, marginBottom: spacing.sm },
+  balanceCard: { paddingVertical: spacing.xl },
+  balance: { color: colors.gold, fontSize: 44, fontWeight: '800', letterSpacing: -1 },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
-  pkg: { width: '48.5%', backgroundColor: colors.card, borderRadius: 12, padding: spacing.lg, gap: 4, alignItems: 'center' },
-  pkgTagged: { borderWidth: 1, borderColor: colors.primary },
-  tag: { color: '#111', backgroundColor: colors.primary, fontSize: 10, fontWeight: '800', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4, overflow: 'hidden' },
-  pkgName: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  pkgCoins: { color: colors.coin, fontSize: 22, fontWeight: '800' },
-  price: { color: colors.text, fontSize: 16, fontWeight: '700', backgroundColor: colors.primaryDark, paddingHorizontal: 14, paddingVertical: 6, borderRadius: 8, overflow: 'hidden', marginTop: 4 },
-  tx: { flexDirection: 'row', alignItems: 'center', paddingVertical: spacing.md, borderBottomColor: colors.border, borderBottomWidth: StyleSheet.hairlineWidth },
-  txTitle: { color: colors.text, fontWeight: '600' },
-  txAmount: { fontSize: 18, fontWeight: '800' },
+  pkg: {
+    width: '48.6%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    padding: spacing.md,
+    paddingBottom: spacing.lg,
+    gap: 6,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: colors.border,
+  },
+  pkgTagged: { borderColor: colors.primary },
+  pressed: { transform: [{ scale: 0.97 }], backgroundColor: colors.surfaceAlt },
+  tag: { backgroundColor: colors.primary, paddingHorizontal: 8, paddingVertical: 3, borderRadius: radius.pill },
+  tagText: { color: colors.onPrimary, fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
+  tagSpacer: { height: 19 },
+  pkgCoins: { color: colors.text, fontSize: 24, fontWeight: '800' },
+  price: { alignSelf: 'stretch', marginTop: 6, backgroundColor: colors.primary, borderRadius: radius.sm, paddingVertical: 9, alignItems: 'center' },
+  priceText: { color: colors.onPrimary, fontSize: 15, fontWeight: '800' },
+  secure: { flexDirection: 'row', alignItems: 'center', gap: 6, justifyContent: 'center' },
+  tx: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingVertical: spacing.md },
+  txTitle: { color: colors.text, fontWeight: '600', fontSize: 15 },
+  txAmount: { fontSize: 17, fontWeight: '800' },
 });

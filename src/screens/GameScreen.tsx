@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { ArrowLeft, Bot, Flag, Frown, Handshake, Scale, Trophy, WifiOff, X } from 'lucide-react-native';
 import ChessBoard from '../components/ChessBoard';
-import { Button, Muted, styles as ui } from '../components/ui';
+import { Avatar, Button, Card, IconBadge, Muted, styles as ui } from '../components/ui';
 import { useAuth } from '../auth/AuthContext';
 import { Color, GameState, Side, useGame } from '../game/GameContext';
 import { AppStackParams } from '../navigation/navigationRef';
-import { colors, spacing } from '../theme';
+import { colors, radius, spacing, type } from '../theme';
 
 type Props = NativeStackScreenProps<AppStackParams, 'Game'>;
 
@@ -32,32 +33,38 @@ function useClock(game: GameState | null, color: Color): number | null {
   return running ? base - (Date.now() - game.clocksAt) : base;
 }
 
-function PlayerBar({ side, ms, active, captured }: { side: Side; ms: number | null; active: boolean; captured?: string }) {
+function PlayerBar({ side, ms, active, color }: { side: Side; ms: number | null; active: boolean; color: Color }) {
+  const low = ms !== null && ms < 20000;
   return (
-    <View style={styles.bar}>
+    <View style={[styles.bar, active && styles.barActive]}>
+      {side.isComputer ? <IconBadge icon={Bot} color={colors.accent} size={38} /> : <Avatar name={side.displayName} size={38} />}
       <View style={{ flex: 1 }}>
         <Text style={styles.player} numberOfLines={1}>
           {side.displayName}
-          {side.rating ? <Text style={styles.rating}> ({side.rating})</Text> : null}
         </Text>
-        {captured ? <Muted>{captured}</Muted> : null}
+        <Muted>
+          {color === 'w' ? 'White' : 'Black'}
+          {side.rating ? ` · ${side.rating}` : ''}
+        </Muted>
       </View>
       {ms !== null ? (
-        <View style={[styles.clock, active && styles.clockActive, ms < 20000 && active && styles.clockLow]}>
-          <Text style={[styles.clockText, active && { color: '#111' }]}>{formatClock(ms)}</Text>
+        <View style={[styles.clock, active && styles.clockActive, active && low && styles.clockLow]}>
+          <Text style={[styles.clockText, active && { color: low ? '#fff' : colors.onPrimary }]}>{formatClock(ms)}</Text>
         </View>
       ) : null}
     </View>
   );
 }
 
-function resultText(game: GameState): { title: string; detail: string } {
+function resultInfo(game: GameState) {
   const end = game.end!;
-  if (end.result === 'ABORTED') return { title: 'Game aborted', detail: 'No rating change' };
   const reason = (end.termination ?? '').toLowerCase().replace(/_/g, ' ');
-  if (end.result === 'DRAW') return { title: 'Draw', detail: reason ? `by ${reason}` : '' };
+  if (end.result === 'ABORTED') return { title: 'Game aborted', detail: 'No rating change', icon: X, color: colors.muted };
+  if (end.result === 'DRAW') return { title: 'Draw', detail: reason ? `by ${reason}` : '', icon: Scale, color: colors.draw };
   const won = end.winner === game.yourColor;
-  return { title: won ? 'You won!' : 'You lost', detail: reason ? `by ${reason}` : '' };
+  return won
+    ? { title: 'You won!', detail: reason ? `by ${reason}` : '', icon: Trophy, color: colors.gold }
+    : { title: 'You lost', detail: reason ? `by ${reason}` : '', icon: Frown, color: colors.loss };
 }
 
 export default function GameScreen({ navigation }: Props) {
@@ -84,9 +91,9 @@ export default function GameScreen({ navigation }: Props) {
 
   if (!game) {
     return (
-      <View style={[ui.center, { gap: 12, padding: 24 }]}>
+      <View style={[ui.center, { gap: spacing.md, padding: spacing.xl }]}>
         <Muted>No active game.</Muted>
-        <Button title="Back" onPress={() => navigation.goBack()} />
+        <Button title="Back to lobby" icon={ArrowLeft} variant="secondary" onPress={() => navigation.goBack()} />
       </View>
     );
   }
@@ -109,64 +116,79 @@ export default function GameScreen({ navigation }: Props) {
   const active = game.status === 'ACTIVE';
   const canAbort = active && game.moves.length < 2;
   const opponentOffersDraw = active && game.drawOfferBy === opp;
-  const result = game.end ? resultText(game) : null;
-  const myRatingChange = game.end?.ratings
-    ? (me === 'w' ? game.end.ratings.white : game.end.ratings.black)
-    : null;
+  const result = game.end ? resultInfo(game) : null;
+  const myRating = game.end?.ratings ? (me === 'w' ? game.end.ratings.white : game.end.ratings.black) : null;
+  const diff = myRating ? myRating.after - myRating.before : 0;
 
   return (
-    <ScrollView style={ui.screen} contentContainerStyle={{ paddingVertical: spacing.sm, gap: spacing.sm }}>
-      <PlayerBar side={sides[opp]} ms={oppMs} active={active && game.turn === opp} />
+    <ScrollView style={ui.screen} contentContainerStyle={styles.content}>
+      <View style={styles.meta}>
+        <Text style={type.overline}>{game.mode === 'VS_COMPUTER' ? 'Practice · unrated' : `${game.timeControl.label} · Rated`}</Text>
+      </View>
+
+      <PlayerBar side={sides[opp]} ms={oppMs} active={active && game.turn === opp} color={opp} />
       {game.opponentDisconnected && active ? (
-        <Text style={styles.notice}>Opponent disconnected — they lose if they do not return within 60s.</Text>
+        <View style={styles.notice}>
+          <WifiOff size={14} color={colors.warning} />
+          <Text style={styles.noticeText}>Opponent disconnected — they lose if not back within 60s</Text>
+        </View>
       ) : null}
 
-      <ChessBoard
-        fen={game.fen}
-        orientation={me}
-        interactive={active && game.turn === me}
-        lastMove={game.lastMove}
-        settings={settings}
-        onMove={(from, to, promotion) => run(() => move(from, to, promotion))}
-      />
+      <View style={styles.board}>
+        <ChessBoard
+          fen={game.fen}
+          orientation={me}
+          interactive={active && game.turn === me}
+          lastMove={game.lastMove}
+          settings={settings}
+          onMove={(from, to, promotion) => run(() => move(from, to, promotion))}
+        />
+      </View>
 
-      <PlayerBar side={sides[me]} ms={myMs} active={active && game.turn === me} />
+      <PlayerBar side={sides[me]} ms={myMs} active={active && game.turn === me} color={me} />
       {error ? <Text style={styles.error}>{error}</Text> : null}
 
       {opponentOffersDraw ? (
-        <View style={[styles.panel, { borderColor: colors.primary, borderWidth: 1 }]}>
-          <Text style={styles.panelTitle}>Your opponent offers a draw</Text>
+        <Card style={styles.drawOffer}>
+          <View style={ui.row}>
+            <IconBadge icon={Handshake} color={colors.primary} />
+            <Text style={[type.h2, { flex: 1 }]}>Draw offered</Text>
+          </View>
           <View style={ui.row}>
             <Button title="Accept" style={{ flex: 1 }} onPress={() => run(() => respondDraw(true))} />
             <Button title="Decline" variant="secondary" style={{ flex: 1 }} onPress={() => run(() => respondDraw(false))} />
           </View>
-        </View>
+        </Card>
       ) : null}
 
       {result ? (
-        <View style={styles.panel}>
-          <Text style={styles.resultTitle}>{result.title}</Text>
+        <Card style={styles.result}>
+          <IconBadge icon={result.icon} color={result.color} size={56} />
+          <Text style={type.hero}>{result.title}</Text>
           {result.detail ? <Muted>{result.detail}</Muted> : null}
-          {myRatingChange ? (
-            <Text style={{ color: myRatingChange.after >= myRatingChange.before ? colors.win : colors.loss, fontWeight: '700' }}>
-              Rating {myRatingChange.before} → {myRatingChange.after} ({myRatingChange.after >= myRatingChange.before ? '+' : ''}
-              {myRatingChange.after - myRatingChange.before})
-            </Text>
+          {myRating ? (
+            <View style={[styles.ratingChange, { backgroundColor: diff >= 0 ? colors.primarySoft : colors.dangerSoft }]}>
+              <Text style={{ color: diff >= 0 ? colors.win : colors.loss, fontWeight: '800', fontSize: 16 }}>
+                {myRating.before} → {myRating.after} ({diff >= 0 ? '+' : ''}
+                {diff})
+              </Text>
+            </View>
           ) : null}
-          <Button title="Back to lobby" onPress={() => navigation.goBack()} style={{ alignSelf: 'stretch' }} />
-        </View>
+          <Button title="Back to lobby" icon={ArrowLeft} onPress={() => navigation.goBack()} style={{ alignSelf: 'stretch', marginTop: spacing.sm }} />
+        </Card>
       ) : (
-        <View style={[ui.row, { paddingHorizontal: spacing.lg }]}>
+        <View style={[ui.row, styles.actions]}>
           {canAbort ? (
-            <Button title="Abort" variant="secondary" style={{ flex: 1 }} onPress={() => run(abort)} />
+            <Button title="Abort" icon={X} variant="secondary" style={{ flex: 1 }} onPress={() => run(abort)} />
           ) : (
             <Button
               title="Resign"
+              icon={Flag}
               variant="danger"
               style={{ flex: 1 }}
               onPress={() =>
-                Alert.alert('Resign?', 'You will lose this game.', [
-                  { text: 'Cancel', style: 'cancel' },
+                Alert.alert('Resign this game?', 'Your opponent will be awarded the win.', [
+                  { text: 'Keep playing', style: 'cancel' },
                   { text: 'Resign', style: 'destructive', onPress: () => run(resign) },
                 ])
               }
@@ -174,7 +196,8 @@ export default function GameScreen({ navigation }: Props) {
           )}
           {game.mode !== 'VS_COMPUTER' ? (
             <Button
-              title={game.drawOfferBy === me ? 'Draw offered' : 'Offer draw'}
+              title={game.drawOfferBy === me ? 'Offered' : 'Draw'}
+              icon={Handshake}
               variant="secondary"
               style={{ flex: 1 }}
               disabled={canAbort || game.drawOfferBy === me}
@@ -184,28 +207,56 @@ export default function GameScreen({ navigation }: Props) {
         </View>
       )}
 
-      <View style={[styles.panel, { alignItems: 'stretch' }]}>
-        <Muted>
-          {game.mode === 'VS_COMPUTER' ? 'vs computer · unrated' : `${game.timeControl.label} · rated`}
-        </Muted>
-        <Text style={styles.moves}>{movePairs.length ? movePairs.join('   ') : 'No moves yet. White to move.'}</Text>
-      </View>
+      <Card style={styles.moves}>
+        <Text style={type.overline}>Moves</Text>
+        {movePairs.length ? (
+          <View style={styles.moveWrap}>
+            {movePairs.map((p, i) => (
+              <View key={i} style={[styles.moveChip, i === movePairs.length - 1 && styles.moveChipLast]}>
+                <Text style={styles.moveText}>{p}</Text>
+              </View>
+            ))}
+          </View>
+        ) : (
+          <Muted>No moves yet — White to move.</Muted>
+        )}
+      </Card>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: spacing.lg, gap: spacing.md },
+  content: { paddingVertical: spacing.md, gap: spacing.sm, paddingBottom: spacing.xxl },
+  meta: { alignItems: 'center' },
+  bar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginHorizontal: spacing.md,
+    padding: spacing.sm,
+    paddingRight: spacing.sm,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  barActive: { borderColor: colors.primary },
   player: { color: colors.text, fontSize: 16, fontWeight: '700' },
-  rating: { color: colors.muted, fontWeight: '400' },
-  clock: { backgroundColor: colors.cardAlt, borderRadius: 6, paddingHorizontal: 12, paddingVertical: 6, minWidth: 84, alignItems: 'center' },
-  clockActive: { backgroundColor: '#f0efed' },
-  clockLow: { backgroundColor: '#ff8a80' },
-  clockText: { color: colors.text, fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
-  notice: { color: colors.warning, textAlign: 'center', paddingHorizontal: spacing.lg },
-  error: { color: colors.danger, textAlign: 'center' },
-  panel: { backgroundColor: colors.card, marginHorizontal: spacing.lg, borderRadius: 12, padding: spacing.lg, gap: spacing.sm, alignItems: 'center' },
-  panelTitle: { color: colors.text, fontWeight: '700', fontSize: 16 },
-  resultTitle: { color: colors.text, fontSize: 26, fontWeight: '800' },
-  moves: { color: colors.text, fontSize: 14, lineHeight: 22 },
+  clock: { backgroundColor: colors.surfaceAlt, borderRadius: radius.sm, paddingHorizontal: 14, paddingVertical: 8, minWidth: 92, alignItems: 'center' },
+  clockActive: { backgroundColor: colors.primary },
+  clockLow: { backgroundColor: colors.danger },
+  clockText: { color: colors.textSecondary, fontSize: 22, fontWeight: '800', fontVariant: ['tabular-nums'] },
+  board: { borderRadius: radius.sm, overflow: 'hidden', marginHorizontal: 0 },
+  notice: { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.lg },
+  noticeText: { color: colors.warning, fontSize: 13, fontWeight: '600' },
+  error: { color: colors.danger, textAlign: 'center', fontWeight: '600' },
+  actions: { paddingHorizontal: spacing.md, marginTop: spacing.xs },
+  drawOffer: { marginHorizontal: spacing.md, borderColor: colors.primary },
+  result: { marginHorizontal: spacing.md, alignItems: 'center', paddingVertical: spacing.xl },
+  ratingChange: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: radius.pill },
+  moves: { marginHorizontal: spacing.md },
+  moveWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  moveChip: { backgroundColor: colors.surfaceAlt, borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  moveChipLast: { backgroundColor: colors.primarySoft },
+  moveText: { color: colors.text, fontSize: 13, fontWeight: '600', fontVariant: ['tabular-nums'] },
 });

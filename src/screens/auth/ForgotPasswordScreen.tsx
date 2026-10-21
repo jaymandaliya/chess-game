@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { ScrollView } from 'react-native';
+import { Keyboard, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyRound, Mail, MailCheck, Send } from 'lucide-react-native';
 import { api, errorMessage } from '../../api/client';
-import { Button, Card, ErrorText, Field, Muted, styles, Title } from '../../components/ui';
+import { Button, Card, ErrorText, Field, IconBadge, styles as ui } from '../../components/ui';
+import { colors, spacing, type } from '../../theme';
 
 export default function ForgotPasswordScreen() {
   const [email, setEmail] = useState('');
@@ -10,6 +12,8 @@ export default function ForgotPasswordScreen() {
   const [error, setError] = useState<string | null>(null);
 
   async function submit() {
+    if (!email.trim() || loading) return;
+    Keyboard.dismiss();
     setError(null);
     setLoading(true);
     try {
@@ -23,30 +27,44 @@ export default function ForgotPasswordScreen() {
   }
 
   return (
-    <ScrollView style={styles.screen} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
-      <Title>Reset your password</Title>
+    <ScrollView style={ui.screen} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+      <View style={styles.header}>
+        <IconBadge icon={KeyRound} color={colors.gold} size={52} />
+        <Text style={type.h1}>Reset your password</Text>
+        <Text style={type.caption}>Enter your account email and we will send you a reset link.</Text>
+      </View>
       {sent ? (
-        <Card>
-          <Muted>If {email} is registered, we have emailed a reset link. Open it to choose a new password.</Muted>
+        <Card style={styles.sent}>
+          <IconBadge icon={MailCheck} size={44} />
+          <Text style={type.h2}>Check your inbox</Text>
+          <Text style={[type.caption, styles.centerText]}>If {email} is registered, a reset link is on its way.</Text>
         </Card>
       ) : (
         <>
-          <Muted>Enter your account email and we will send you a reset link.</Muted>
           <ErrorText message={error} />
           <Field
             label="Email"
+            icon={Mail}
             value={email}
             onChangeText={setEmail}
+            placeholder="you@example.com"
             autoCapitalize="none"
             autoCorrect={false}
             keyboardType="email-address"
             textContentType="username"
             returnKeyType="send"
-            onSubmitEditing={() => email.trim() && !loading && submit()}
+            onSubmitEditing={submit}
           />
-          <Button title="Send reset link" onPress={submit} loading={loading} disabled={!email} />
+          <Button title="Send reset link" icon={Send} onPress={submit} loading={loading} disabled={!email.trim()} />
         </>
       )}
     </ScrollView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: { padding: spacing.xl, gap: spacing.md },
+  header: { gap: spacing.sm, marginBottom: spacing.sm },
+  sent: { alignItems: 'center', paddingVertical: spacing.xl },
+  centerText: { textAlign: 'center' },
+});

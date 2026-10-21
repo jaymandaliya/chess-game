@@ -1,8 +1,9 @@
 import React from 'react';
-import { Text } from 'react-native';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import { History, Swords, UserRound, Wallet } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { GameProvider } from '../game/GameContext';
 import { Loading } from '../components/ui';
@@ -27,38 +28,43 @@ const Tabs = createBottomTabNavigator<TabParams>();
 
 const theme = {
   ...DarkTheme,
-  colors: { ...DarkTheme.colors, background: colors.bg, card: colors.card, primary: colors.primary, text: colors.text, border: colors.border },
+  colors: { ...DarkTheme.colors, background: colors.bg, card: colors.bg, primary: colors.primary, text: colors.text, border: colors.border },
 };
 
 const headerOptions = {
-  headerStyle: { backgroundColor: colors.card },
+  headerStyle: { backgroundColor: colors.bg },
   headerTintColor: colors.text,
   headerShadowVisible: false,
+  headerTitleStyle: { fontWeight: '700' as const },
 };
 
-const TAB_ICONS: Record<keyof TabParams, string> = { Play: '♞', History: '☰', Wallet: '●', Profile: '♚' };
+const TAB_ICONS: Record<keyof TabParams, LucideIcon> = { Play: Swords, History, Wallet, Profile: UserRound };
 
-function TabIcon({ name, color }: { name: keyof TabParams; color: string }) {
-  return <Text style={{ color, fontSize: 20 }}>{`${TAB_ICONS[name]}︎`}</Text>;
-}
-
-const renderTabIcon = (name: keyof TabParams) => ({ color }: { color: string }) => <TabIcon name={name} color={color} />;
+const renderTabIcon =
+  (name: keyof TabParams) =>
+  ({ color, focused }: { color: string; focused: boolean }) => {
+    const Icon = TAB_ICONS[name];
+    return <Icon size={24} color={color} strokeWidth={focused ? 2.5 : 2} />;
+  };
 
 function MainTabs() {
   return (
     <Tabs.Navigator
       screenOptions={({ route }) => ({
         ...headerOptions,
+        headerTitleAlign: 'left',
+        headerTitleStyle: { fontWeight: '800', fontSize: 26 },
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
-        tabBarStyle: { backgroundColor: colors.card, borderTopColor: colors.border },
+        tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, height: 88, paddingTop: 8 },
         tabBarIcon: renderTabIcon(route.name),
       })}
     >
-      <Tabs.Screen name="Play" component={PlayScreen} />
+      <Tabs.Screen name="Play" component={PlayScreen} options={{ headerShown: false }} />
       <Tabs.Screen name="History" component={HistoryScreen} />
       <Tabs.Screen name="Wallet" component={WalletScreen} />
-      <Tabs.Screen name="Profile" component={ProfileScreen} />
+      <Tabs.Screen name="Profile" component={ProfileScreen} options={{ headerShown: false }} />
     </Tabs.Navigator>
   );
 }
@@ -69,8 +75,8 @@ function AppNavigator() {
       <AppStack.Navigator screenOptions={headerOptions}>
         <AppStack.Screen name="Tabs" component={MainTabs} options={{ headerShown: false }} />
         <AppStack.Screen name="Matchmaking" component={MatchmakingScreen} options={{ title: 'Quick pairing', presentation: 'modal' }} />
-        <AppStack.Screen name="Game" component={GameScreen} options={{ title: 'Game' }} />
-        <AppStack.Screen name="Settings" component={SettingsScreen} />
+        <AppStack.Screen name="Game" component={GameScreen} options={{ title: '' }} />
+        <AppStack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Board & gameplay' }} />
         <AppStack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit profile' }} />
         <AppStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change password' }} />
       </AppStack.Navigator>
@@ -80,10 +86,10 @@ function AppNavigator() {
 
 function AuthNavigator() {
   return (
-    <AuthStack.Navigator screenOptions={headerOptions}>
+    <AuthStack.Navigator screenOptions={{ ...headerOptions, title: '' }}>
       <AuthStack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-      <AuthStack.Screen name="Register" component={RegisterScreen} options={{ title: 'Sign up' }} />
-      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} options={{ title: 'Forgot password' }} />
+      <AuthStack.Screen name="Register" component={RegisterScreen} />
+      <AuthStack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
     </AuthStack.Navigator>
   );
 }

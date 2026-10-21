@@ -1,39 +1,29 @@
 import React, { useCallback, useState } from 'react';
 import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { Bot, Coins, Flame, Play, Swords, Timer, Trophy, WifiOff, Zap } from 'lucide-react-native';
+import type { LucideIcon } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { useGame } from '../game/GameContext';
 import { api } from '../api/client';
 import { AppStackParams } from '../navigation/navigationRef';
-import { Button, Card, Muted, styles as ui, Title } from '../components/ui';
-import { colors, spacing } from '../theme';
+import { Avatar, Button, Card, GradientCard, IconBadge, Segmented, SectionTitle, styles as ui } from '../components/ui';
+import { colors, radius, spacing, type } from '../theme';
 
-const TIME_CONTROLS = [
-  { key: '1+0', name: 'Bullet' },
-  { key: '3+0', name: 'Blitz' },
-  { key: '3+2', name: 'Blitz' },
-  { key: '5+0', name: 'Blitz' },
-  { key: '10+0', name: 'Rapid' },
-  { key: '15+10', name: 'Rapid' },
+const TIME_CONTROLS: { key: string; name: string; icon: LucideIcon; color: string }[] = [
+  { key: '1+0', name: 'Bullet', icon: Zap, color: '#F59E0B' },
+  { key: '3+0', name: 'Blitz', icon: Flame, color: '#F43F5E' },
+  { key: '3+2', name: 'Blitz', icon: Flame, color: '#F43F5E' },
+  { key: '5+0', name: 'Blitz', icon: Flame, color: '#F43F5E' },
+  { key: '10+0', name: 'Rapid', icon: Timer, color: '#22C55E' },
+  { key: '15+10', name: 'Rapid', icon: Timer, color: '#22C55E' },
 ];
-const LEVELS = [
-  { level: 1, name: 'Easy' },
-  { level: 2, name: 'Medium' },
-  { level: 3, name: 'Hard' },
-];
-const COLORS = [
-  { key: 'white', label: 'White' },
-  { key: 'random', label: 'Random' },
-  { key: 'black', label: 'Black' },
-] as const;
 
-function Chip({ label, active, onPress }: { label: string; active: boolean; onPress(): void }) {
-  return (
-    <Pressable onPress={onPress} style={[styles.chip, active && styles.chipActive]} accessibilityState={{ selected: active }}>
-      <Text style={[styles.chipText, active && { color: colors.text }]}>{label}</Text>
-    </Pressable>
-  );
+function greeting() {
+  const h = new Date().getHours();
+  return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
 }
 
 export default function PlayScreen() {
@@ -42,7 +32,7 @@ export default function PlayScreen() {
   const { connected, game, playComputer } = useGame();
   const [balance, setBalance] = useState<number | null>(null);
   const [level, setLevel] = useState(2);
-  const [color, setColor] = useState<(typeof COLORS)[number]['key']>('random');
+  const [color, setColor] = useState<'white' | 'random' | 'black'>('random');
   const [starting, setStarting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
@@ -51,7 +41,7 @@ export default function PlayScreen() {
       const [wallet] = await Promise.all([api<{ balance: number }>('/player/wallet'), refreshUser()]);
       setBalance(wallet.balance);
     } catch {
-      // shown as "—"
+      // keeps the last known values
     }
   }, [refreshUser]);
 
@@ -72,90 +62,166 @@ export default function PlayScreen() {
     }
   }
 
-  const activeGame = game && game.status === 'ACTIVE';
+  const activeGame = game && game.status === 'ACTIVE' ? game : null;
+  const canPlay = connected && !activeGame;
 
   return (
-    <ScrollView
-      style={ui.screen}
-      contentContainerStyle={ui.content}
-      refreshControl={<RefreshControl refreshing={refreshing} tintColor={colors.primary} onRefresh={async () => { setRefreshing(true); await load(); setRefreshing(false); }} />}
-    >
-      <Card style={styles.header}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.name}>{user?.displayName}</Text>
-          <Muted>Rating {user?.rating ?? '—'}</Muted>
-        </View>
-        <View style={styles.coins}>
-          <Text style={styles.coinText}>● {balance ?? '—'}</Text>
-          <Muted>coins</Muted>
-        </View>
-      </Card>
-
-      {!connected ? <Text style={styles.offline}>Connecting to the game server…</Text> : null}
-
-      {activeGame ? (
-        <Card style={{ borderColor: colors.primary, borderWidth: 1 }}>
-          <Title>Game in progress</Title>
-          <Muted>
-            vs {game.yourColor === 'w' ? game.black.displayName : game.white.displayName}
-          </Muted>
-          <Button title="Resume game" onPress={() => navigation.navigate('Game')} />
-        </Card>
-      ) : null}
-
-      <Title>Play online</Title>
-      <View style={styles.grid}>
-        {TIME_CONTROLS.map((tc) => (
-          <Pressable
-            key={tc.key}
-            disabled={!connected || Boolean(activeGame)}
-            onPress={() => navigation.navigate('Matchmaking', { timeControl: tc.key })}
-            style={({ pressed }) => [styles.tc, { opacity: !connected || activeGame ? 0.4 : pressed ? 0.8 : 1 }]}
-          >
-            <Text style={styles.tcKey}>{tc.key}</Text>
-            <Muted>{tc.name}</Muted>
+    <SafeAreaView style={ui.screen} edges={['top']}>
+      <ScrollView
+        contentContainerStyle={ui.content}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            tintColor={colors.primary}
+            onRefresh={async () => {
+              setRefreshing(true);
+              await load();
+              setRefreshing(false);
+            }}
+          />
+        }
+      >
+        {/* Header */}
+        <View style={styles.header}>
+          <Avatar name={user?.displayName ?? '?'} size={48} />
+          <View style={{ flex: 1 }}>
+            <Text style={type.caption}>{greeting()},</Text>
+            <Text style={type.h1} numberOfLines={1}>
+              {user?.displayName}
+            </Text>
+          </View>
+          <Pressable style={styles.coinPill} onPress={() => navigation.navigate('Tabs', { screen: 'Wallet' } as never)} accessibilityLabel="Coin balance">
+            <Coins size={16} color={colors.gold} />
+            <Text style={styles.coinText}>{balance === null ? '—' : balance.toLocaleString('en-IN')}</Text>
           </Pressable>
-        ))}
-      </View>
+        </View>
 
-      <Title>Play vs computer</Title>
-      <Card>
-        <Muted>Difficulty</Muted>
-        <View style={ui.row}>
-          {LEVELS.map((l) => (
-            <Chip key={l.level} label={l.name} active={level === l.level} onPress={() => setLevel(l.level)} />
-          ))}
+        {/* Rating hero */}
+        <GradientCard from="#14532D" to="#0F172A" style={styles.hero}>
+          <View style={ui.row}>
+            <IconBadge icon={Trophy} color={colors.gold} size={44} />
+            <View style={{ flex: 1 }}>
+              <Text style={type.overline}>Your rating</Text>
+              <Text style={styles.rating}>{user?.rating ?? '—'}</Text>
+            </View>
+            <View style={[styles.status, { backgroundColor: connected ? colors.primarySoft : colors.dangerSoft }]}>
+              <View style={[styles.dot, { backgroundColor: connected ? colors.primary : colors.danger }]} />
+              <Text style={[styles.statusText, { color: connected ? colors.primary : colors.danger }]}>{connected ? 'Online' : 'Offline'}</Text>
+            </View>
+          </View>
+        </GradientCard>
+
+        {!connected ? (
+          <View style={styles.offline}>
+            <WifiOff size={16} color={colors.warning} />
+            <Text style={styles.offlineText}>Connecting to the game server…</Text>
+          </View>
+        ) : null}
+
+        {activeGame ? (
+          <GradientCard from="#4C1D95" to="#1E1B4B">
+            <View style={ui.row}>
+              <IconBadge icon={Swords} color="#C4B5FD" />
+              <View style={{ flex: 1 }}>
+                <Text style={type.h2}>Game in progress</Text>
+                <Text style={type.caption}>
+                  vs {activeGame.yourColor === 'w' ? activeGame.black.displayName : activeGame.white.displayName}
+                </Text>
+              </View>
+            </View>
+            <Button title="Resume game" icon={Play} onPress={() => navigation.navigate('Game')} />
+          </GradientCard>
+        ) : null}
+
+        {/* Quick play */}
+        <SectionTitle title="Quick play" />
+        <View style={styles.grid}>
+          {TIME_CONTROLS.map((tc) => {
+            const Icon = tc.icon;
+            return (
+              <Pressable
+                key={tc.key}
+                disabled={!canPlay}
+                onPress={() => navigation.navigate('Matchmaking', { timeControl: tc.key })}
+                style={({ pressed }) => [styles.tc, { opacity: !canPlay ? 0.4 : 1 }, pressed && styles.tcPressed]}
+                accessibilityLabel={`${tc.name} ${tc.key}`}
+              >
+                <Icon size={18} color={tc.color} strokeWidth={2.4} />
+                <Text style={styles.tcKey}>{tc.key}</Text>
+                <Text style={type.caption}>{tc.name}</Text>
+              </Pressable>
+            );
+          })}
         </View>
-        <Muted>Play as</Muted>
-        <View style={ui.row}>
-          {COLORS.map((c) => (
-            <Chip key={c.key} label={c.label} active={color === c.key} onPress={() => setColor(c.key)} />
-          ))}
-        </View>
-        <Button title="Start game" onPress={startComputer} loading={starting} disabled={!connected || Boolean(activeGame)} />
-      </Card>
-    </ScrollView>
+
+        {/* Vs computer */}
+        <SectionTitle title="Practice vs computer" />
+        <Card style={styles.computer}>
+          <View style={ui.row}>
+            <IconBadge icon={Bot} color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={type.h2}>Train with the engine</Text>
+              <Text style={type.caption}>Unrated · no clock</Text>
+            </View>
+          </View>
+          <Text style={type.overline}>Difficulty</Text>
+          <Segmented<number>
+            options={[
+              { key: 1, label: 'Easy' },
+              { key: 2, label: 'Medium' },
+              { key: 3, label: 'Hard' },
+            ]}
+            value={level}
+            onChange={setLevel}
+          />
+          <Text style={type.overline}>Play as</Text>
+          <Segmented<'white' | 'random' | 'black'>
+            options={[
+              { key: 'white', label: 'White' },
+              { key: 'random', label: 'Random' },
+              { key: 'black', label: 'Black' },
+            ]}
+            value={color}
+            onChange={setColor}
+          />
+          <Button title="Start game" icon={Play} onPress={startComputer} loading={starting} disabled={!canPlay} style={{ marginTop: spacing.xs }} />
+        </Card>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', alignItems: 'center' },
-  name: { color: colors.text, fontSize: 22, fontWeight: '800' },
-  coins: { alignItems: 'flex-end' },
-  coinText: { color: colors.coin, fontSize: 20, fontWeight: '800' },
-  offline: { color: colors.warning, textAlign: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xs },
+  coinPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: colors.goldSoft,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: radius.pill,
+  },
+  coinText: { color: colors.gold, fontWeight: '800', fontSize: 15 },
+  hero: { paddingVertical: spacing.xl },
+  rating: { color: colors.text, fontSize: 34, fontWeight: '800', letterSpacing: -0.5 },
+  status: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 10, paddingVertical: 6, borderRadius: radius.pill },
+  dot: { width: 7, height: 7, borderRadius: 4 },
+  statusText: { fontSize: 12, fontWeight: '700' },
+  offline: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, justifyContent: 'center' },
+  offlineText: { color: colors.warning, fontWeight: '600' },
   grid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
   tc: {
-    width: '31.5%',
-    aspectRatio: 1.3,
-    backgroundColor: colors.card,
-    borderRadius: 12,
+    width: '31.8%',
+    backgroundColor: colors.surface,
+    borderRadius: radius.lg,
+    paddingVertical: spacing.lg,
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    gap: 4,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
   },
-  tcKey: { color: colors.text, fontSize: 24, fontWeight: '800' },
-  chip: { flex: 1, paddingVertical: 10, borderRadius: 8, backgroundColor: colors.cardAlt, alignItems: 'center' },
-  chipActive: { backgroundColor: colors.primaryDark },
-  chipText: { color: colors.muted, fontWeight: '700' },
+  tcPressed: { backgroundColor: colors.surfaceAlt, transform: [{ scale: 0.97 }] },
+  tcKey: { color: colors.text, fontSize: 22, fontWeight: '800' },
+  computer: { gap: spacing.md },
 });

@@ -1,13 +1,16 @@
 import React, { useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import type { TextInputInstance } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { NativeStackScreenProps } from '@react-navigation/native-stack';
+import { Lock, LogIn, Mail, UserPlus } from 'lucide-react-native';
 import { useAuth } from '../../auth/AuthContext';
 import { errorMessage } from '../../api/client';
 import { DEMO_LOGIN } from '../../config';
 import { AuthStackParams } from '../../navigation/navigationRef';
-import { Button, ErrorText, Field, LinkButton, Muted, styles as ui } from '../../components/ui';
-import { colors } from '../../theme';
+import { Button, ErrorText, Field, LinkButton, styles as ui } from '../../components/ui';
+import BrandMark from '../../components/BrandMark';
+import { colors, spacing, type } from '../../theme';
 
 type Props = NativeStackScreenProps<AuthStackParams, 'Login'>;
 
@@ -36,50 +39,67 @@ export default function LoginScreen({ navigation }: Props) {
   }
 
   return (
-    <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={[ui.content, styles.container]} keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Text style={styles.logo}>{'♞︎'}</Text>
-          <Text style={styles.title}>Chess Platform</Text>
-          <Muted>Play, improve, win.</Muted>
-        </View>
-        <ErrorText message={error} />
-        {/* Return on Email moves to Password; Return on Password signs in */}
-        <Field
-          label="Email"
-          value={email}
-          onChangeText={setEmail}
-          autoCapitalize="none"
-          autoCorrect={false}
-          autoComplete="email"
-          keyboardType="email-address"
-          textContentType="username"
-          returnKeyType="next"
-          submitBehavior="submit"
-          onSubmitEditing={() => passwordRef.current?.focus()}
-        />
-        <Field
-          ref={passwordRef}
-          label="Password"
-          value={password}
-          onChangeText={setPassword}
-          secureTextEntry
-          autoComplete="password"
-          textContentType="password"
-          returnKeyType="go"
-          onSubmitEditing={submit}
-        />
-        <Button title="Sign in" onPress={submit} loading={loading} disabled={!canSubmit} />
-        <Button title="Create an account" variant="secondary" onPress={() => navigation.navigate('Register')} />
-        <LinkButton title="Forgot password?" onPress={() => navigation.navigate('ForgotPassword')} />
-      </ScrollView>
-    </KeyboardAvoidingView>
+    <SafeAreaView style={ui.screen} edges={['top', 'bottom']}>
+      <KeyboardAvoidingView style={ui.screen} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+          <View style={styles.hero}>
+            <BrandMark size={84} />
+            <Text style={[type.hero, styles.center]}>Welcome back</Text>
+            <Text style={[type.caption, styles.center]}>Sign in to play rated games and track your progress.</Text>
+          </View>
+
+          <View style={styles.form}>
+            <ErrorText message={error} />
+            {/* Return on Email moves to Password; Return on Password signs in */}
+            <Field
+              label="Email"
+              icon={Mail}
+              value={email}
+              onChangeText={setEmail}
+              placeholder="you@example.com"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              keyboardType="email-address"
+              textContentType="username"
+              returnKeyType="next"
+              submitBehavior="submit"
+              onSubmitEditing={() => passwordRef.current?.focus()}
+            />
+            <Field
+              ref={passwordRef}
+              label="Password"
+              icon={Lock}
+              value={password}
+              onChangeText={setPassword}
+              placeholder="Your password"
+              secureTextEntry
+              autoComplete="password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={submit}
+            />
+            <LinkButton title="Forgot password?" align="flex-end" onPress={() => navigation.navigate('ForgotPassword')} />
+            <Button title="Sign in" icon={LogIn} onPress={submit} loading={loading} disabled={!canSubmit} />
+          </View>
+
+          <View style={styles.divider}>
+            <View style={styles.line} />
+            <Text style={type.caption}>New to Chess Platform?</Text>
+            <View style={styles.line} />
+          </View>
+          <Button title="Create an account" icon={UserPlus} variant="secondary" onPress={() => navigation.navigate('Register')} />
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flexGrow: 1, justifyContent: 'center' },
-  header: { alignItems: 'center', marginBottom: 24 },
-  logo: { fontSize: 64, color: colors.text },
-  title: { color: colors.text, fontSize: 28, fontWeight: '800' },
+  container: { flexGrow: 1, justifyContent: 'center', padding: spacing.xl, gap: spacing.lg },
+  hero: { alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  center: { textAlign: 'center' },
+  form: { gap: spacing.md },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.sm },
+  line: { flex: 1, height: StyleSheet.hairlineWidth, backgroundColor: colors.border },
 });
