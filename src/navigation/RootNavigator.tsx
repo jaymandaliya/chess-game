@@ -57,7 +57,7 @@ function MainTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.muted,
         tabBarLabelStyle: { fontSize: 11, fontWeight: '700' },
-        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border, height: 88, paddingTop: 8 },
+        tabBarStyle: { backgroundColor: colors.surface, borderTopColor: colors.border },
         tabBarIcon: renderTabIcon(route.name),
       })}
     >

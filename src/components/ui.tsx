@@ -288,7 +288,7 @@ export function Loading() {
 
 export const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.bg },
-  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: spacing.xxl },
+  content: { padding: spacing.lg, gap: spacing.md, paddingBottom: 56 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   card: {
