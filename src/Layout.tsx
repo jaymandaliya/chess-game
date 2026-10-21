@@ -30,9 +30,12 @@ export default function Layout() {
         <div className="me">
           <div className="me-name">{user?.displayName}</div>
           <div className="me-role">{user?.role.replace('_', ' ')}</div>
-          <button type="button" className="link" onClick={logout}>
-            Sign out
-          </button>
+          <div className="me-links">
+            <NavLink to="/account">My account</NavLink>
+            <button type="button" className="link" onClick={logout}>
+              Sign out
+            </button>
+          </div>
         </div>
       </aside>
       <main className="main">

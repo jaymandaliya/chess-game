@@ -74,6 +74,15 @@ export async function login(email: string, password: string): Promise<SessionUse
   return data.user;
 }
 
+// Server signs out other sessions and returns a fresh one (new cookie + access token)
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+  const data = await api<{ accessToken: string }>('/auth/change-password', {
+    method: 'POST',
+    body: { currentPassword, newPassword },
+  });
+  accessToken = data.accessToken;
+}
+
 export async function logout(): Promise<void> {
   await api('/auth/logout', { method: 'POST', auth: false }).catch(() => {});
   accessToken = null;

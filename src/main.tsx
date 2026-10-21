@@ -13,6 +13,7 @@ import GameActivity from './pages/GameActivity';
 import AuditLogs from './pages/AuditLogs';
 import Settings from './pages/Settings';
 import Reports from './pages/Reports';
+import Account from './pages/Account';
 import './styles.css';
 
 function App() {
@@ -31,6 +32,7 @@ function App() {
         <Route path="audit-logs" element={<AuditLogs />} />
         <Route path="settings" element={<Settings />} />
         <Route path="reports" element={<Reports />} />
+        <Route path="account" element={<Account />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Route>
     </Routes>
