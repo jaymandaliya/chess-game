@@ -40,7 +40,11 @@ export interface GameEnd {
 
 export interface GameState {
   gameId: string;
-  mode: 'RATED' | 'CASUAL' | 'VS_COMPUTER';
+  mode: 'RATED' | 'CASUAL' | 'VS_COMPUTER' | 'TOURNAMENT';
+  // Play coins each player put in (0 = free) and the platform's cut of the pot
+  stake: number;
+  feePercent: number;
+  tournamentId: string | null;
   timeControl: {
     initialSeconds: number;
     incrementSeconds: number;
@@ -80,7 +84,9 @@ interface GameApi {
   connected: boolean;
   game: GameState | null;
   searching: string | null;
-  joinQueue(timeControl: string): Promise<void>;
+  joinQueue(timeControl: string, stake: number): Promise<void>;
+  // Subscribe to server events such as 'tournament:update' or 'queue:cancelled'; returns unsubscribe
+  subscribe(event: string, handler: (payload: any) => void): () => void;
   leaveQueue(): Promise<void>;
   playComputer(
     level: number,
@@ -101,6 +107,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
   // Reconnect only when the signed-in account changes, not when the profile/rating is refreshed
   const userId = user?.id;
   const socketRef = useRef<Socket | null>(null);
+  const listenersRef = useRef(new Map<string, Set<(payload: any) => void>>());
   const [connected, setConnected] = useState(false);
   const [game, setGame] = useState<GameState | null>(null);
   const [searching, setSearching] = useState<string | null>(null);
@@ -116,6 +123,9 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       reconnectionDelayMax: 5000,
     });
     socketRef.current = socket;
+    socket.onAny((event: string, payload: unknown) => {
+      listenersRef.current.get(event)?.forEach(handler => handler(payload));
+    });
 
     socket.on('connect', () => setConnected(true));
     socket.on('disconnect', () => setConnected(false));
@@ -152,6 +162,7 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
     socket.on('queue:joined', ({ timeControl }: { timeControl: string }) =>
       setSearching(timeControl),
     );
+    socket.on('queue:cancelled', () => setSearching(null));
 
     socket.on(
       'game:move',
@@ -255,8 +266,8 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
 
   const actions = useMemo(
     () => ({
-      async joinQueue(timeControl: string) {
-        await emit('queue:join', { timeControl });
+      async joinQueue(timeControl: string, stake: number) {
+        await emit('queue:join', { timeControl, stake });
         setSearching(timeControl);
       },
       async leaveQueue() {
@@ -285,6 +296,15 @@ export function GameProvider({ children }: { children: React.ReactNode }) {
       },
       async respondDraw(accept: boolean) {
         await emit('game:respondDraw', { gameId: gameIdRef.current, accept });
+      },
+      // Registry, not socket.on: screens can subscribe before the socket exists or across reconnects
+      subscribe(event: string, handler: (payload: any) => void) {
+        const set = listenersRef.current.get(event) ?? new Set();
+        set.add(handler);
+        listenersRef.current.set(event, set);
+        return () => {
+          set.delete(handler);
+        };
       },
       clearGame() {
         setGame(g => (g && g.status === 'ENDED' ? null : g));

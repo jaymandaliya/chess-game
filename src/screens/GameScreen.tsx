@@ -214,7 +214,11 @@ export default function GameScreen({ navigation }: Props) {
           <Text style={type.overline}>
             {game.mode === 'VS_COMPUTER'
               ? 'Practice · unrated'
-              : `${game.timeControl.label} · Rated`}
+              : game.mode === 'TOURNAMENT'
+              ? `${game.timeControl.label} · Tournament`
+              : `${game.timeControl.label} · Rated${
+                  game.stake ? ` · ${game.stake} coin entry` : ''
+                }`}
           </Text>
         </View>
 
@@ -340,6 +344,30 @@ export default function GameScreen({ navigation }: Props) {
                 Rating {myRating.before} → {myRating.after}
               </Muted>
             ) : null}
+            {game.stake > 0 && game.end ? (
+              <Text
+                style={[
+                  styles.coinResult,
+                  {
+                    color:
+                      game.end.winner === me
+                        ? colors.gold
+                        : game.end.winner
+                        ? colors.loss
+                        : colors.textSecondary,
+                  },
+                ]}
+              >
+                {game.end.winner === me
+                  ? `+${
+                      game.stake * 2 -
+                      Math.floor((game.stake * 2 * game.feePercent) / 100)
+                    } coins won`
+                  : game.end.winner
+                  ? `−${game.stake} coins`
+                  : `${game.stake} coin entry returned`}
+              </Text>
+            ) : null}
             <Button
               title="Back to lobby"
               icon={ArrowLeft}
@@ -396,6 +424,7 @@ export default function GameScreen({ navigation }: Props) {
 }
 
 const styles = StyleSheet.create({
+  coinResult: { fontSize: 16, fontWeight: '800' },
   content: {
     paddingVertical: spacing.md,
     gap: spacing.sm,

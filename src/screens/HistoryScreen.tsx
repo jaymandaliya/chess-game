@@ -217,7 +217,12 @@ export default function HistoryScreen() {
                 ) : null}
               </Text>
               <Muted>
-                {isBot ? 'Practice' : item.timeControl.label} ·{' '}
+                {isBot
+                  ? 'Practice'
+                  : item.mode === 'TOURNAMENT'
+                  ? `Tournament ${item.timeControl.label}`
+                  : item.timeControl.label}{' '}
+                ·{' '}
                 {item.status === 'ABORTED'
                   ? 'aborted'
                   : (item.termination ?? '')

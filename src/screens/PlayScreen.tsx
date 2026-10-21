@@ -26,6 +26,7 @@ import type { LucideIcon } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { useGame } from '../game/GameContext';
 import { api } from '../api/client';
+import { Economy } from '../api/types';
 import { AppStackParams } from '../navigation/navigationRef';
 import {
   Avatar,
@@ -63,6 +64,8 @@ export default function PlayScreen() {
   const { user, refreshUser } = useAuth();
   const { connected, game, playComputer } = useGame();
   const [balance, setBalance] = useState<number | null>(null);
+  const [economy, setEconomy] = useState<Economy | null>(null);
+  const [stake, setStake] = useState(0);
   const [level, setLevel] = useState(2);
   const [color, setColor] = useState<'white' | 'random' | 'black'>('random');
   const [starting, setStarting] = useState(false);
@@ -70,11 +73,12 @@ export default function PlayScreen() {
 
   const load = useCallback(async () => {
     try {
-      const [wallet] = await Promise.all([
-        api<{ balance: number }>('/player/wallet'),
+      const [eco] = await Promise.all([
+        api<Economy>('/player/economy'),
         refreshUser(),
       ]);
-      setBalance(wallet.balance);
+      setEconomy(eco);
+      setBalance(eco.balances.play);
     } catch {
       // keeps the last known values
     }
@@ -214,6 +218,40 @@ export default function PlayScreen() {
 
         {/* Quick play */}
         <SectionTitle title="Quick play" />
+        {economy && economy.stakeOptions.length > 1 ? (
+          <Card style={styles.stakeCard}>
+            <View style={ui.row}>
+              <Coins size={16} color={colors.gold} />
+              <Text style={[type.overline, { flex: 1 }]}>Entry per player</Text>
+              {stake > 0 ? (
+                <Text style={styles.winText}>
+                  Win{' '}
+                  {stake * 2 -
+                    Math.floor(
+                      (stake * 2 * economy.winningsFeePercent) / 100,
+                    )}{' '}
+                  coins
+                </Text>
+              ) : (
+                <Text style={type.caption}>Free · just rating</Text>
+              )}
+            </View>
+            <Segmented<number>
+              options={economy.stakeOptions.map(s => ({
+                key: s,
+                label: s === 0 ? 'Free' : String(s),
+              }))}
+              value={stake}
+              onChange={setStake}
+            />
+            {stake > 0 ? (
+              <Text style={type.caption}>
+                Both players put in {stake} coins. Winner takes the pot minus a{' '}
+                {economy.winningsFeePercent}% platform fee. Draws are refunded.
+              </Text>
+            ) : null}
+          </Card>
+        ) : null}
         <View style={styles.grid}>
           {TIME_CONTROLS.map(tc => {
             const Icon = tc.icon;
@@ -222,7 +260,15 @@ export default function PlayScreen() {
                 key={tc.key}
                 disabled={!canPlay}
                 onPress={() =>
-                  navigation.navigate('Matchmaking', { timeControl: tc.key })
+                  stake > (balance ?? 0)
+                    ? Alert.alert(
+                        'Not enough coins',
+                        `You need ${stake} coins for this entry. Buy coins in the Wallet tab.`,
+                      )
+                    : navigation.navigate('Matchmaking', {
+                        timeControl: tc.key,
+                        stake,
+                      })
                 }
                 style={({ pressed }) => [
                   styles.tc,
@@ -290,6 +336,8 @@ const styles = StyleSheet.create({
     gap: spacing.md,
     marginBottom: spacing.xs,
   },
+  stakeCard: { gap: spacing.md },
+  winText: { color: colors.gold, fontWeight: '800' },
   coinPill: {
     flexDirection: 'row',
     alignItems: 'center',

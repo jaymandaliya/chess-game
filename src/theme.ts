@@ -34,15 +34,34 @@ export const spacing = { xs: 4, sm: 8, md: 12, lg: 16, xl: 24, xxl: 32 };
 export const radius = { sm: 10, md: 14, lg: 20, xl: 28, pill: 999 };
 
 export const type = {
-  hero: { fontSize: 30, fontWeight: '800' as const, letterSpacing: -0.5, color: colors.text },
-  h1: { fontSize: 24, fontWeight: '800' as const, letterSpacing: -0.3, color: colors.text },
+  hero: {
+    fontSize: 30,
+    fontWeight: '800' as const,
+    letterSpacing: -0.5,
+    color: colors.text,
+  },
+  h1: {
+    fontSize: 24,
+    fontWeight: '800' as const,
+    letterSpacing: -0.3,
+    color: colors.text,
+  },
   h2: { fontSize: 18, fontWeight: '700' as const, color: colors.text },
   body: { fontSize: 15, color: colors.text },
   caption: { fontSize: 13, color: colors.textSecondary },
-  overline: { fontSize: 11, fontWeight: '700' as const, letterSpacing: 1, color: colors.muted, textTransform: 'uppercase' as const },
+  overline: {
+    fontSize: 11,
+    fontWeight: '700' as const,
+    letterSpacing: 1,
+    color: colors.muted,
+    textTransform: 'uppercase' as const,
+  },
 };
 
-export const boardThemes: Record<PlayerSettings['boardTheme'], { light: string; dark: string }> = {
+export const boardThemes: Record<
+  PlayerSettings['boardTheme'],
+  { light: string; dark: string }
+> = {
   classic: { light: '#f0d9b5', dark: '#b58863' },
   green: { light: '#ebecd0', dark: '#739552' },
   blue: { light: '#dee3e6', dark: '#8ca2ad' },
@@ -50,9 +69,18 @@ export const boardThemes: Record<PlayerSettings['boardTheme'], { light: string; 
 };
 
 // Stable colour per name for avatar initials
-const AVATAR_COLORS = ['#22C55E', '#8B5CF6', '#06B6D4', '#F59E0B', '#EC4899', '#3B82F6', '#14B8A6'];
+const AVATAR_COLORS = [
+  '#22C55E',
+  '#8B5CF6',
+  '#06B6D4',
+  '#F59E0B',
+  '#EC4899',
+  '#3B82F6',
+  '#14B8A6',
+];
 export function avatarColor(seed: string): string {
   let h = 0;
-  for (let i = 0; i < seed.length; i += 1) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  for (let i = 0; i < seed.length; i += 1)
+    h = (h * 31 + seed.charCodeAt(i)) >>> 0;
   return AVATAR_COLORS[h % AVATAR_COLORS.length];
 }

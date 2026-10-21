@@ -3,7 +3,14 @@ import { Alert, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { KeyRound, LogOut, Palette, Pencil } from 'lucide-react-native';
+import {
+  Banknote,
+  BadgeCheck,
+  KeyRound,
+  LogOut,
+  Palette,
+  Pencil,
+} from 'lucide-react-native';
 import { api } from '../api/client';
 import { Profile } from '../api/types';
 import { useAuth } from '../auth/AuthContext';
@@ -71,6 +78,25 @@ export default function ProfileScreen() {
             title="Board & gameplay"
             subtitle="Theme, legal moves, auto-queen"
             onPress={() => navigation.navigate('Settings')}
+          />
+        </Card>
+
+        <Text style={[type.overline, styles.groupLabel]}>Money</Text>
+        <Card style={styles.menu}>
+          <ListRow
+            icon={BadgeCheck}
+            iconColor={colors.primary}
+            title="KYC verification"
+            subtitle="PAN and payout account"
+            onPress={() => navigation.navigate('Kyc')}
+          />
+          <View style={styles.divider} />
+          <ListRow
+            icon={Banknote}
+            iconColor={colors.gold}
+            title="Withdrawals"
+            subtitle="Convert play coins to money"
+            onPress={() => navigation.navigate('Withdraw')}
           />
         </Card>
 

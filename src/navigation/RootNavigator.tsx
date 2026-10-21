@@ -2,7 +2,13 @@ import React from 'react';
 import { DarkTheme, NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { History, Swords, UserRound, Wallet } from 'lucide-react-native';
+import {
+  History,
+  Swords,
+  Trophy,
+  UserRound,
+  Wallet,
+} from 'lucide-react-native';
 import type { LucideIcon } from 'lucide-react-native';
 import { useAuth } from '../auth/AuthContext';
 import { GameProvider } from '../game/GameContext';
@@ -26,6 +32,10 @@ import GameScreen from '../screens/GameScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
 import ChangePasswordScreen from '../screens/ChangePasswordScreen';
+import TournamentsScreen from '../screens/TournamentsScreen';
+import TournamentDetailScreen from '../screens/TournamentDetailScreen';
+import KycScreen from '../screens/KycScreen';
+import WithdrawScreen from '../screens/WithdrawScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParams>();
 const AppStack = createNativeStackNavigator<AppStackParams>();
@@ -52,6 +62,7 @@ const headerOptions = {
 
 const TAB_ICONS: Record<keyof TabParams, LucideIcon> = {
   Play: Swords,
+  Events: Trophy,
   History,
   Wallet,
   Profile: UserRound,
@@ -85,6 +96,11 @@ function MainTabs() {
         name="Play"
         component={PlayScreen}
         options={{ headerShown: false }}
+      />
+      <Tabs.Screen
+        name="Events"
+        component={TournamentsScreen}
+        options={{ title: 'Tournaments', tabBarLabel: 'Events' }}
       />
       <Tabs.Screen name="History" component={HistoryScreen} />
       <Tabs.Screen name="Wallet" component={WalletScreen} />
@@ -130,6 +146,21 @@ function AppNavigator() {
           name="ChangePassword"
           component={ChangePasswordScreen}
           options={{ title: 'Change password' }}
+        />
+        <AppStack.Screen
+          name="TournamentDetail"
+          component={TournamentDetailScreen}
+          options={{ title: 'Tournament' }}
+        />
+        <AppStack.Screen
+          name="Kyc"
+          component={KycScreen}
+          options={{ title: 'KYC verification' }}
+        />
+        <AppStack.Screen
+          name="Withdraw"
+          component={WithdrawScreen}
+          options={{ title: 'Withdraw' }}
         />
       </AppStack.Navigator>
     </GameProvider>

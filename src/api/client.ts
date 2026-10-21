@@ -1,6 +1,12 @@
 import { API_URL, REQUEST_TIMEOUT_MS } from '../config';
 import { SessionUser } from './types';
-import { clearTokens, getAccessToken, loadRefreshToken, saveRefreshToken, setAccessToken } from './tokenStore';
+import {
+  clearTokens,
+  getAccessToken,
+  loadRefreshToken,
+  saveRefreshToken,
+  setAccessToken,
+} from './tokenStore';
 
 export class ApiError extends Error {
   constructor(
@@ -33,7 +39,9 @@ export async function storeSession(session: SessionPayload): Promise<void> {
 function fetchWithTimeout(url: string, init: RequestInit): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+  return fetch(url, { ...init, signal: controller.signal }).finally(() =>
+    clearTimeout(timer),
+  );
 }
 
 let refreshing: Promise<SessionPayload | null> | null = null;
@@ -75,7 +83,10 @@ interface RequestOptions {
   auth?: boolean;
 }
 
-async function send(path: string, { method = 'GET', body, auth = true }: RequestOptions): Promise<Response> {
+async function send(
+  path: string,
+  { method = 'GET', body, auth = true }: RequestOptions,
+): Promise<Response> {
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body !== undefined) headers['Content-Type'] = 'application/json';
   const token = getAccessToken();
@@ -87,7 +98,10 @@ async function send(path: string, { method = 'GET', body, auth = true }: Request
   });
 }
 
-export async function api<T>(path: string, options: RequestOptions = {}): Promise<T> {
+export async function api<T>(
+  path: string,
+  options: RequestOptions = {},
+): Promise<T> {
   let res: Response;
   try {
     res = await send(path, options);
@@ -104,7 +118,9 @@ export async function api<T>(path: string, options: RequestOptions = {}): Promis
     const timedOut = err instanceof Error && err.name === 'AbortError';
     throw new ApiError(
       timedOut ? 'TIMEOUT' : 'NETWORK_ERROR',
-      timedOut ? 'The server is taking too long to respond. Please try again.' : 'Cannot reach the server. Check your internet connection.',
+      timedOut
+        ? 'The server is taking too long to respond. Please try again.'
+        : 'Cannot reach the server. Check your internet connection.',
       0,
     );
   }
@@ -127,5 +143,8 @@ export function errorMessage(err: unknown): string {
 
 export function formatRupees(paise: number): string {
   const rupees = paise / 100;
-  return `₹${rupees.toLocaleString('en-IN', { minimumFractionDigits: rupees % 1 ? 2 : 0, maximumFractionDigits: 2 })}`;
+  return `₹${rupees.toLocaleString('en-IN', {
+    minimumFractionDigits: rupees % 1 ? 2 : 0,
+    maximumFractionDigits: 2,
+  })}`;
 }

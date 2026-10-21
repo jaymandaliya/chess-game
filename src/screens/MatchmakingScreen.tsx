@@ -10,8 +10,8 @@ import { colors, spacing, type } from '../theme';
 type Props = NativeStackScreenProps<AppStackParams, 'Matchmaking'>;
 
 export default function MatchmakingScreen({ route, navigation }: Props) {
-  const { timeControl } = route.params;
-  const { joinQueue, leaveQueue } = useGame();
+  const { timeControl, stake } = route.params;
+  const { joinQueue, leaveQueue, subscribe } = useGame();
   const [seconds, setSeconds] = useState(0);
   const leaveRef = useRef(leaveQueue);
   leaveRef.current = leaveQueue;
@@ -31,7 +31,14 @@ export default function MatchmakingScreen({ route, navigation }: Props) {
   }, [pulse]);
 
   useEffect(() => {
-    joinQueue(timeControl).catch(err => {
+    const off = subscribe(
+      'queue:cancelled',
+      ({ reason }: { reason: string }) => {
+        Alert.alert('Matchmaking stopped', reason);
+        navigation.goBack();
+      },
+    );
+    joinQueue(timeControl, stake).catch(err => {
       Alert.alert(
         'Could not join',
         err instanceof Error ? err.message : 'Try again',
@@ -40,11 +47,12 @@ export default function MatchmakingScreen({ route, navigation }: Props) {
     });
     const timer = setInterval(() => setSeconds(s => s + 1), 1000);
     return () => {
+      off();
       clearInterval(timer);
       // No-op on the server if we were already paired
       leaveRef.current();
     };
-  }, [timeControl, joinQueue, navigation]);
+  }, [timeControl, stake, joinQueue, subscribe, navigation]);
 
   const ring = {
     transform: [
@@ -69,8 +77,8 @@ export default function MatchmakingScreen({ route, navigation }: Props) {
       <Text style={type.h1}>Finding an opponent</Text>
       <View style={styles.pill}>
         <Text style={styles.pillText}>
-          {timeControl} · Rated · {Math.floor(seconds / 60)}:
-          {String(seconds % 60).padStart(2, '0')}
+          {timeControl} · {stake ? `${stake} coin entry` : 'Rated'} ·{' '}
+          {Math.floor(seconds / 60)}:{String(seconds % 60).padStart(2, '0')}
         </Text>
       </View>
       <Text style={[type.caption, styles.hint]}>

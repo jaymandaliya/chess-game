@@ -23,7 +23,10 @@ export async function loadRefreshToken(): Promise<string | null> {
     const creds = await Keychain.getGenericPassword({ service: SERVICE });
     return creds ? creds.password : null;
   } catch (err) {
-    console.warn('Keychain read failed', err instanceof Error ? err.message : err);
+    console.warn(
+      'Keychain read failed',
+      err instanceof Error ? err.message : err,
+    );
     return null;
   }
 }
@@ -33,6 +36,9 @@ export async function clearTokens(): Promise<void> {
   try {
     await Keychain.resetGenericPassword({ service: SERVICE });
   } catch (err) {
-    console.warn('Keychain reset failed', err instanceof Error ? err.message : err);
+    console.warn(
+      'Keychain reset failed',
+      err instanceof Error ? err.message : err,
+    );
   }
 }
