@@ -19,6 +19,7 @@ import MatchmakingScreen from '../screens/MatchmakingScreen';
 import GameScreen from '../screens/GameScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import EditProfileScreen from '../screens/EditProfileScreen';
+import ChangePasswordScreen from '../screens/ChangePasswordScreen';
 
 const AuthStack = createNativeStackNavigator<AuthStackParams>();
 const AppStack = createNativeStackNavigator<AppStackParams>();
@@ -71,6 +72,7 @@ function AppNavigator() {
         <AppStack.Screen name="Game" component={GameScreen} options={{ title: 'Game' }} />
         <AppStack.Screen name="Settings" component={SettingsScreen} />
         <AppStack.Screen name="EditProfile" component={EditProfileScreen} options={{ title: 'Edit profile' }} />
+        <AppStack.Screen name="ChangePassword" component={ChangePasswordScreen} options={{ title: 'Change password' }} />
       </AppStack.Navigator>
     </GameProvider>
   );

@@ -37,6 +37,7 @@ export default function ProfileScreen() {
         {profile ? <Muted>Member since {new Date(profile.createdAt).toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}</Muted> : null}
       </Card>
       <Button title="Edit profile" variant="secondary" onPress={() => navigation.navigate('EditProfile')} />
+      <Button title="Change password" variant="secondary" onPress={() => navigation.navigate('ChangePassword')} />
       <Button title="Settings" variant="secondary" onPress={() => navigation.navigate('Settings')} />
       <Button
         title="Sign out"

@@ -83,7 +83,7 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
-        versionName "1.0"
+        versionName "1.0.0"
     }
     signingConfigs {
         debug {
@@ -92,15 +92,25 @@ android {
             keyAlias 'androiddebugkey'
             keyPassword 'android'
         }
+        // Upload key: keystore file next to this build.gradle (gitignored), passwords in ~/.gradle/gradle.properties
+        if (project.hasProperty('CHESS_UPLOAD_STORE_FILE')) {
+            release {
+                storeFile file(CHESS_UPLOAD_STORE_FILE)
+                storePassword CHESS_UPLOAD_STORE_PASSWORD
+                keyAlias CHESS_UPLOAD_KEY_ALIAS
+                keyPassword CHESS_UPLOAD_KEY_PASSWORD
+            }
+        }
     }
     buildTypes {
         debug {
             signingConfig signingConfigs.debug
         }
         release {
-            // Caution! In production, you need to generate your own keystore file.
-            // see https://reactnative.dev/docs/signed-apk-android.
-            signingConfig signingConfigs.debug
+            // Without the upload key properties the release output is unsigned (never debug-signed)
+            if (project.hasProperty('CHESS_UPLOAD_STORE_FILE')) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled enableProguardInReleaseBuilds
             proguardFiles getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro"
         }

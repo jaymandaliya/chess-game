@@ -6,6 +6,7 @@ export type AppStackParams = {
   Game: undefined;
   Settings: undefined;
   EditProfile: undefined;
+  ChangePassword: undefined;
 };
 
 export type AuthStackParams = {
