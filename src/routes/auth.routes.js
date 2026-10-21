@@ -160,6 +160,28 @@ router.post(
 );
 
 router.post(
+  '/change-password',
+  limits.passwordResetLimiter,
+  authenticate,
+  validate({ body: z.object({ currentPassword: z.string().min(1).max(128), newPassword: passwordSchema }) }),
+  async (req, res) => {
+    const { currentPassword, newPassword } = req.valid.body;
+    const user = await User.findById(req.user._id).select('+passwordHash');
+    // 400 (not 401) so clients don't treat a typo as an expired session
+    if (!(await verifyPassword(currentPassword, user.passwordHash))) {
+      throw AppError.badRequest('Current password is incorrect', 'INVALID_PASSWORD');
+    }
+    user.passwordHash = await hashPassword(newPassword);
+    await user.save();
+    // Sign out every other device, then hand this client a fresh session
+    await tokenService.revokeAllForUser(user._id, 'PASSWORD_CHANGED');
+    await audit(req, { action: 'PASSWORD_CHANGED', targetType: 'USER', targetId: user._id });
+    const { tokens } = await tokenService.createSession(user, clientMeta(req));
+    return sendSession(req, res, user, tokens);
+  },
+);
+
+router.post(
   '/reset-password',
   limits.passwordResetLimiter,
   validate({ body: z.object({ token: z.string().min(20).max(200), password: passwordSchema }) }),

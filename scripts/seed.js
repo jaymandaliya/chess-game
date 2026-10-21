@@ -1,5 +1,8 @@
 // Idempotent: safe to run more than once.
 // Creates the first super admin and default coin packages; adds sample players/matches outside production.
+const fs = require('fs');
+const path = require('path');
+const mongoose = require('mongoose');
 const env = require('../src/config/env');
 const { connectDb, disconnectDb } = require('../src/config/db');
 const User = require('../src/models/User');
@@ -116,8 +119,18 @@ async function seedSampleData() {
   console.log(`Created ${players.length} sample players (password Player123) and 60 matches`);
 }
 
+// Production runs with autoIndex off, so unique indexes (emails, refresh tokens, ledger idempotency keys)
+// are created here. Runs on every deploy (Railway pre-deploy) and is a no-op when they already exist.
+async function ensureIndexes() {
+  const dir = path.join(__dirname, '../src/models');
+  for (const file of fs.readdirSync(dir)) if (file !== 'plugins.js') require(path.join(dir, file));
+  for (const model of Object.values(mongoose.models)) await model.createIndexes();
+  console.log(`Indexes ensured for ${Object.keys(mongoose.models).length} collections`);
+}
+
 async function main() {
   await connectDb();
+  await ensureIndexes();
   await seedAdmin();
   await seedPackages();
   if (!env.isProd && process.env.SEED_SAMPLE_DATA === 'true') await seedSampleData();

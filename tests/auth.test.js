@@ -107,6 +107,25 @@ describe('auth', () => {
     expect(await PasswordReset.countDocuments({ userId: user._id })).toBe(1);
   });
 
+  test('change-password checks the current password and signs out other sessions', async () => {
+    const { user, token, refreshToken } = await asUser();
+    const wrong = await api()
+      .post('/api/v1/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'Nope12345', newPassword: 'Changed123' });
+    expect(wrong.status).toBe(400);
+    expect(wrong.body.code).toBe('INVALID_PASSWORD');
+
+    const res = await api()
+      .post('/api/v1/auth/change-password')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ currentPassword: 'Password123', newPassword: 'Changed123' });
+    expect(res.status).toBe(200);
+    expect(res.body.data.refreshToken).toBeDefined();
+    expect((await api().post('/api/v1/auth/refresh').send({ refreshToken })).status).toBe(401);
+    await expect(login(user, 'Changed123')).resolves.toHaveProperty('accessToken');
+  });
+
   test('reset-password sets new password, is single-use and ends sessions', async () => {
     const { user, refreshToken } = await asUser();
     const token = crypto.randomBytes(32).toString('base64url');
