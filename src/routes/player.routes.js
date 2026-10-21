@@ -8,6 +8,7 @@ const Transaction = require('../models/Transaction');
 const walletService = require('../services/walletService');
 const orderService = require('../services/orderService');
 const { playerStats } = require('../services/statsService');
+const gameManager = require('../game/gameManager');
 const validate = require('../middleware/validate');
 const limits = require('../middleware/rateLimits');
 const { ok, created, findByIdOr404 } = require('../utils/http');
@@ -114,6 +115,9 @@ router.get(
 );
 
 router.get('/stats', async (req, res) => ok(res, await playerStats(req.user._id)));
+
+// Lets the app resume an unfinished game after a restart
+router.get('/active-game', (req, res) => ok(res, { gameId: gameManager.activeGameIdFor(req.user._id) }));
 
 // ---- Wallet ----
 

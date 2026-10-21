@@ -31,6 +31,25 @@ router.post(
   },
 );
 
+// Development only: completes a checkout without Razorpay. Exists only with PAYMENT_PROVIDER=mock,
+// which config/env.js refuses in production. It still goes through the normal signature + verify path.
+if (getProvider().name === 'mock') {
+  router.post(
+    '/mock/complete',
+    authenticate,
+    requireRole('PLAYER'),
+    validate({ body: z.object({ providerOrderId: z.string().min(1).max(100) }) }),
+    async (req, res) => {
+      const provider = getProvider();
+      const { providerOrderId } = req.valid.body;
+      const providerPaymentId = `pay_mock_${Date.now().toString(36)}`;
+      const signature = provider.signCheckout(providerOrderId, providerPaymentId);
+      const result = await orderService.verifyCheckout(req.user, { providerOrderId, providerPaymentId, signature }, req);
+      return ok(res, result);
+    },
+  );
+}
+
 async function handleEvent(body) {
   const payment = body && body.payload && body.payload.payment && body.payload.payment.entity;
   switch (body && body.event) {

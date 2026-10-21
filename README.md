@@ -10,7 +10,7 @@ cp .env.example .env          # set JWT_ACCESS_SECRET to a long random string
 npm install
 npm run seed                  # super admin + coin packages (+ sample players/matches if SEED_SAMPLE_DATA=true)
 npm run dev                   # http://localhost:4000
-npm test                      # 31 API tests on an in-memory MongoDB replica set
+npm test                      # 39 API + game server tests on an in-memory MongoDB replica set
 ```
 
 MongoDB **must run as a replica set** (wallet credits use transactions). Use `?replicaSet=rs0` in `MONGO_URI`;
@@ -83,8 +83,36 @@ Configure in the Razorpay dashboard: webhook URL `https://<api>/api/v1/payments/
 `order.paid`, `payment.failed`, `refund.processed`, and put its secret in `RAZORPAY_WEBHOOK_SECRET`.
 `PAYMENT_PROVIDER=mock` is for local development only and refused in production.
 
+## Game server (Socket.IO, same port)
+
+Connect with `io(API_URL, { auth: { token: accessToken } })`; only active PLAYER accounts are accepted
+(`connect_error` → `err.data.code` is `UNAUTHORIZED`, `TOKEN_EXPIRED` or `FORBIDDEN`). Every client event takes an
+ack callback that receives `{ ok: true, data }` or `{ ok: false, code, message }`.
+
+| Client → server | Payload |
+|---|---|
+| `queue:join` / `queue:leave` | `{ timeControl: '1+0'|'3+0'|'3+2'|'5+0'|'10+0'|'15+10' }` |
+| `game:computer` | `{ level: 1-3, color: 'white'|'black'|'random' }` (untimed, unrated) |
+| `game:move` | `{ gameId, from: 'e2', to: 'e4', promotion?: 'q'|'r'|'b'|'n' }` |
+| `game:resign`, `game:abort`, `game:offerDraw`, `game:sync` | `{ gameId }` |
+| `game:respondDraw` | `{ gameId, accept: boolean }` |
+
+Server → client: `queue:joined`, `game:start` / `game:state` (full state incl. `yourColor`, `fen`, `moves`, `clocks`),
+`game:move`, `game:drawOffer`, `game:drawDeclined`, `game:opponentDisconnected`, `game:opponentReconnected`,
+`game:end` (`result`, `termination`, `winner`, `ratings`).
+
+Rules enforced by the server: legal moves only (chess.js), turn order, clocks with increment (start after both first
+moves), 30 s to make the first move or the game is aborted, 60 s to reconnect or the game is lost by abandonment,
+timeout vs insufficient material is a draw, Elo (K=32) for RATED games only. Each game is a `Match` record from
+start to finish, so admin game activity, history and stats use the same data.
+
+Games are held in memory, so run **one API instance** for now (games interrupted by a restart are marked ABORTED).
+Scaling out needs the Socket.IO Redis adapter plus shared game state.
+
 ## Not done yet
 
 - Email delivery for password reset (`src/services/mailer.js` only logs the link outside production).
-- Game server (Socket.IO matchmaking, server-validated moves with chess.js, clocks, Elo). It will write `Match` records,
-  which the history/stats/reporting APIs above already read.
+- Coins are bought but not yet spent (e.g. entry fees / rewards per match) — wallet `debit` is ready for it.
+
+With `PAYMENT_PROVIDER=mock`, `POST /payments/mock/complete { providerOrderId }` completes a checkout for testing the app
+without Razorpay; the route does not exist with the real provider.
