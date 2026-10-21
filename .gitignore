@@ -1,0 +1,12 @@
+# Monorepo root — each app has its own .gitignore too
+node_modules/
+.DS_Store
+*.apk
+*.aab
+*.ipa
+!.env.example
+*.keystore
+!mobile/android/app/debug.keystore
+.netlify/
+.railway/
+config.bat
